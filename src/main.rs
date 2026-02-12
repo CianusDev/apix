@@ -3,6 +3,7 @@ mod config;
 mod errors;
 mod http;
 mod models;
+mod tui;
 
 use app::App;
 use errors::ApixError;
@@ -13,8 +14,14 @@ use models::Request;
 async fn main() -> errors::Result<()> {
     let args: Vec<String> = std::env::args().collect();
 
+    // Sans arguments : lancer la TUI
+    if args.len() == 1 {
+        return tui::run().await;
+    }
+
     if args.len() < 3 {
         eprintln!("Usage: apix <METHOD> <URL> [-H \"key: value\"]... [-d '{{\"json\"}}']");
+        eprintln!("   ou: apix  (lancer la TUI)");
         eprintln!("Example: apix GET https://api.example.com/users");
         eprintln!("Example: apix POST https://api.example.com/users -H \"Authorization: Bearer token\" -d '{{\"name\": \"John\"}}'");
         std::process::exit(1);

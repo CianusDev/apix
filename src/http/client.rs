@@ -2,6 +2,7 @@ use crate::errors::Result;
 use crate::http::request_builder::RequestBuilder;
 use crate::models::{Request, Response};
 
+#[derive(Clone)]
 pub struct HttpClient {
     client: reqwest::Client,
 }

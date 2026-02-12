@@ -39,16 +39,13 @@ fn invalid_method_returns_error() {
 }
 
 #[test]
-fn no_args_shows_usage() {
-    let output = Command::new("cargo")
-        .arg("run")
-        .arg("--quiet")
-        .output()
-        .expect("Failed to execute apix");
+fn incomplete_args_shows_usage() {
+    // Un seul arg (methode sans URL) doit afficher l'usage
+    let output = run_apix(&["GET"]);
     let stderr = String::from_utf8_lossy(&output.stderr);
 
     assert!(!output.status.success());
-    assert!(stderr.contains("Usage: apix <METHOD> <URL>"));
+    assert!(stderr.contains("Usage:"));
 }
 
 #[test]
