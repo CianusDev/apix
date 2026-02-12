@@ -1,27 +1,34 @@
-fn main() {
+mod app;
+mod config;
+mod errors;
+mod http;
+mod models;
+
+use app::App;
+use models::Method;
+use models::Request;
+
+#[tokio::main]
+async fn main() -> errors::Result<()> {
     let args: Vec<String> = std::env::args().collect();
-    let method = &args[1];
-    let url = &args[2];
 
-    if method == "GET" {
-        trpl::block_on(get(url));
-    } else {
-        println!("Unsupported method: {}", method);
+    if args.len() < 3 {
+        eprintln!("Usage: apix <METHOD> <URL>");
+        eprintln!("Example: apix GET https://api.example.com/users");
+        std::process::exit(1);
     }
-}
 
-async fn get(url: &str) {
-    println!("GET request to {}", url);
-    let req = reqwest::get(url).await.expect("Failed to send GET request");
-    let status_code = req.status().as_u16();
-    let headers = req.headers().clone();
-    let body = req
-        .json::<serde_json::Value>()
-        .await
-        .expect("Failed to parse JSON response");
+    let method = Method::from_str(&args[1])?;
+    let url = args[2].clone();
 
-    println!(
-        "status: {:#?}\nheaders: {:?}\n body: {:#?}",
-        status_code, headers, body
-    );
+    let app = App::new()?;
+    app.initialize()?;
+
+    let request = Request::new(method, url.clone());
+
+    println!("{} request to {}", method, url);
+    let response = app.http_client.execute(&request).await?;
+    println!("{}", response.format());
+
+    Ok(())
 }
