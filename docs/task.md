@@ -9,45 +9,45 @@
 - [x] Implementer la requete GET avec affichage status, headers, body
 
 ### Requetes HTTP
-- [ ] Implementer POST avec body JSON
-- [ ] Implementer PUT avec body JSON
-- [ ] Implementer DELETE
-- [ ] Implementer PATCH
-- [ ] Gestion des headers personnalises en argument
-- [ ] Gestion du body en argument (pour POST/PUT/PATCH)
+- [x] Implementer POST avec body JSON
+- [x] Implementer PUT avec body JSON
+- [x] Implementer DELETE
+- [x] Implementer PATCH
+- [x] Gestion des headers personnalises en argument
+- [x] Gestion du body en argument (pour POST/PUT/PATCH)
 
 ### Architecture
-- [ ] Extraire la logique HTTP dans le module `http/` (client, request_builder, response)
-- [ ] Completer le module `models/` (response, collection, environment)
-- [ ] Creer `errors.rs` a la racine de `src/` (types d'erreurs centralises avec thiserror)
-- [ ] Creer le module `config/` (settings, chemins ~/.apix/, preferences)
-- [ ] Migrer de `trpl::block_on` vers `#[tokio::main]`
-- [ ] Gestion d'erreurs propre avec anyhow/thiserror (remplacer les `.expect()`)
+- [x] Extraire la logique HTTP dans le module `http/` (client, request_builder, response)
+- [x] Completer le module `models/` (response, collection, environment)
+- [x] Creer `errors.rs` a la racine de `src/` (types d'erreurs centralises avec thiserror)
+- [x] Creer le module `config/` (settings, chemins ~/.apix/, preferences)
+- [x] Migrer de `trpl::block_on` vers `#[tokio::main]`
+- [x] Gestion d'erreurs propre avec anyhow/thiserror (remplacer les `.expect()`)
 
 ### Tests
-- [ ] Tests unitaires pour le module `models/`
-- [ ] Tests unitaires pour le module `http/`
+- [x] Tests unitaires pour le module `models/`
+- [x] Tests unitaires pour le module `http/`
 
 ---
 
 ## Phase 2 — Integration TUI
 
-- [ ] Ajouter les dependances Ratatui + Crossterm
-- [ ] Creer le module `tui/` (mod, ui, events, state)
-- [ ] Layout deux panneaux (requete / reponse)
-- [ ] Navigation clavier
-- [ ] Scroll du body reponse
-- [ ] Indicateur de chargement
-- [ ] Gestion de l'etat applicatif dans `app.rs`
+- [x] Ajouter les dependances Ratatui + Crossterm
+- [x] Creer le module `tui/` (mod, ui, events, state)
+- [x] Layout deux panneaux (requete / reponse)
+- [x] Navigation clavier
+- [x] Scroll du body reponse
+- [x] Indicateur de chargement
+- [x] Gestion de l'etat applicatif dans `app.rs`
 
 ---
 
 ## Phase 3 — JSON & headers dynamiques
 
-- [ ] Pretty print JSON dans la reponse
-- [ ] Coloration syntaxique JSON
-- [ ] Indication d'erreur si JSON invalide
-- [ ] Saisie dynamique des headers dans la TUI
+- [x] Pretty print JSON dans la reponse
+- [x] Coloration syntaxique JSON
+- [x] Gestion des reponses non-JSON (fallback texte brut)
+- [x] Saisie dynamique des headers dans la TUI
 
 ---
 
