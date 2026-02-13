@@ -9,7 +9,7 @@ use ratatui::{
 use crate::app::App;
 use crate::models::Method;
 
-use super::state::{CollectionsView, FocusedPanel, RequestField, TuiState};
+use super::state::{CollectionsView, EnvironmentsView, FocusedPanel, RequestField, TuiState};
 
 /// Couleur associee a chaque methode HTTP
 fn method_color(method: Method) -> Color {
@@ -44,6 +44,21 @@ pub fn draw(f: &mut Frame, app: &App, tui_state: &TuiState) {
             Span::styled("[HISTORY] ", Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD))
         } else if tui_state.show_collections {
             Span::styled("[COLLECTIONS] ", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+        } else if tui_state.show_environments {
+            Span::styled("[ENVIRONMENTS] ", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD))
+        } else {
+            Span::raw("")
+        },
+        // Indicateur environnement actif (toujours visible)
+        if let Some(idx) = app.active_environment {
+            if let Some(env) = app.environments.items.get(idx) {
+                Span::styled(
+                    format!("[ENV: {}] ", env.name),
+                    Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+                )
+            } else {
+                Span::raw("")
+            }
         } else {
             Span::raw("")
         },
@@ -61,6 +76,8 @@ pub fn draw(f: &mut Frame, app: &App, tui_state: &TuiState) {
         draw_history_panel(f, content_chunks[1], app, tui_state);
     } else if tui_state.show_collections {
         draw_collections_panel(f, content_chunks[1], app, tui_state);
+    } else if tui_state.show_environments {
+        draw_environments_panel(f, content_chunks[1], app, tui_state);
     } else {
         draw_response_panel(f, content_chunks[1], app, tui_state);
     }
@@ -125,6 +142,57 @@ fn draw_help_bar(f: &mut Frame, area: Rect, tui_state: &TuiState) {
             Span::styled("q", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
             Span::styled(" quitter", Style::default().fg(Color::White)),
         ])
+    } else if tui_state.show_environments && tui_state.editing_environment_name {
+        Line::from(vec![
+            Span::styled(" Nom: ", Style::default().fg(Color::White)),
+            Span::styled("Enter", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(" valider  ", Style::default().fg(Color::White)),
+            Span::styled("Esc", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(" annuler", Style::default().fg(Color::White)),
+        ])
+    } else if tui_state.show_environments && tui_state.editing_variable {
+        Line::from(vec![
+            Span::styled(" Tab", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(" cle/valeur  ", Style::default().fg(Color::White)),
+            Span::styled("Enter", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(" valider  ", Style::default().fg(Color::White)),
+            Span::styled("Esc", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(" annuler", Style::default().fg(Color::White)),
+        ])
+    } else if tui_state.show_environments && tui_state.environments_view == EnvironmentsView::EnvironmentList {
+        Line::from(vec![
+            Span::styled(" ↑↓", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(" naviguer  ", Style::default().fg(Color::White)),
+            Span::styled("Enter", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::styled(" activer  ", Style::default().fg(Color::White)),
+            Span::styled("v", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::styled(" variables  ", Style::default().fg(Color::White)),
+            Span::styled("n", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::styled(" nouveau  ", Style::default().fg(Color::White)),
+            Span::styled("d", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::styled(" supprimer  ", Style::default().fg(Color::White)),
+            Span::styled("e", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::styled("/", Style::default().fg(Color::White)),
+            Span::styled("Esc", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::styled(" fermer  ", Style::default().fg(Color::White)),
+            Span::styled("q", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::styled(" quitter", Style::default().fg(Color::White)),
+        ])
+    } else if tui_state.show_environments && tui_state.environments_view == EnvironmentsView::VariableList {
+        Line::from(vec![
+            Span::styled(" ↑↓", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(" naviguer  ", Style::default().fg(Color::White)),
+            Span::styled("Enter", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::styled(" editer  ", Style::default().fg(Color::White)),
+            Span::styled("a", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::styled(" ajouter  ", Style::default().fg(Color::White)),
+            Span::styled("d", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::styled(" supprimer  ", Style::default().fg(Color::White)),
+            Span::styled("Esc", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::styled(" retour  ", Style::default().fg(Color::White)),
+            Span::styled("q", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::styled(" quitter", Style::default().fg(Color::White)),
+        ])
     } else if tui_state.is_editing && tui_state.focused_request_field == RequestField::Headers {
         Line::from(vec![
             Span::styled(" Tab", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
@@ -172,6 +240,8 @@ fn draw_help_bar(f: &mut Frame, area: Rect, tui_state: &TuiState) {
             Span::styled(" historique  ", Style::default().fg(Color::White)),
             Span::styled("c", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
             Span::styled(" collections  ", Style::default().fg(Color::White)),
+            Span::styled("e", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::styled(" env  ", Style::default().fg(Color::White)),
             Span::styled("q", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
             Span::styled(" quitter", Style::default().fg(Color::White)),
         ])
@@ -714,6 +784,234 @@ fn draw_collections_panel(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiS
                         ),
                         Span::raw(" "),
                         Span::styled(url_display, Style::default().fg(Color::White)),
+                    ])).style(style)
+                })
+                .collect();
+
+            let widget = List::new(items);
+            f.render_widget(widget, inner);
+        }
+    }
+}
+
+fn draw_environments_panel(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiState) {
+    let border_style = Style::default().fg(Color::Green);
+
+    let title = match tui_state.environments_view {
+        EnvironmentsView::EnvironmentList => {
+            let count = app.environments.items.len();
+            format!(" Environnements [{}] ", count)
+        }
+        EnvironmentsView::VariableList => {
+            if let Some(env) = app.environments.items.get(tui_state.environment_index) {
+                format!(" {} [{}] ", env.name, env.variables.len())
+            } else {
+                " Environnement ".to_string()
+            }
+        }
+    };
+
+    let block = Block::default()
+        .title(title)
+        .borders(Borders::ALL)
+        .border_style(border_style);
+
+    let inner = block.inner(area);
+    f.render_widget(block, area);
+
+    // Edition du nom d'environnement
+    if tui_state.editing_environment_name {
+        let lines = vec![
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("  Nom: ", Style::default().fg(Color::White)),
+                Span::styled(
+                    if tui_state.environment_name_input.is_empty() {
+                        "..."
+                    } else {
+                        &tui_state.environment_name_input
+                    },
+                    Style::default().fg(Color::Yellow).add_modifier(Modifier::UNDERLINED),
+                ),
+            ]),
+        ];
+        f.render_widget(Paragraph::new(lines), inner);
+
+        let cursor_x = inner.x + 7 + tui_state.environment_name_cursor as u16;
+        let cursor_y = inner.y + 1;
+        f.set_cursor_position((cursor_x, cursor_y));
+        return;
+    }
+
+    match tui_state.environments_view {
+        EnvironmentsView::EnvironmentList => {
+            if app.environments.items.is_empty() {
+                let placeholder = vec![
+                    Line::from(""),
+                    Line::from(Span::styled(
+                        "  Aucun environnement.",
+                        Style::default().fg(Color::DarkGray),
+                    )),
+                    Line::from(""),
+                    Line::from(vec![
+                        Span::styled("  Appuyez sur ", Style::default().fg(Color::DarkGray)),
+                        Span::styled("n", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+                        Span::styled(" pour en creer un.", Style::default().fg(Color::DarkGray)),
+                    ]),
+                ];
+                f.render_widget(Paragraph::new(placeholder), inner);
+                return;
+            }
+
+            let items: Vec<ListItem> = app
+                .environments
+                .items
+                .iter()
+                .enumerate()
+                .map(|(i, env)| {
+                    let is_selected = i == tui_state.environment_index;
+                    let is_active = app.active_environment == Some(i);
+                    let marker = if is_selected { "▸ " } else { "  " };
+                    let style = if is_selected {
+                        Style::default().bg(Color::DarkGray)
+                    } else {
+                        Style::default()
+                    };
+
+                    let active_indicator = if is_active { " *" } else { "" };
+
+                    ListItem::new(Line::from(vec![
+                        Span::styled(marker, Style::default().fg(Color::Green)),
+                        Span::styled(
+                            &env.name,
+                            Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
+                        ),
+                        Span::styled(
+                            active_indicator,
+                            Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+                        ),
+                        Span::styled(
+                            format!("  ({} vars)", env.variables.len()),
+                            Style::default().fg(Color::DarkGray),
+                        ),
+                    ])).style(style)
+                })
+                .collect();
+
+            let widget = List::new(items);
+            f.render_widget(widget, inner);
+        }
+
+        EnvironmentsView::VariableList => {
+            let env = match app.environments.items.get(tui_state.environment_index) {
+                Some(e) => e,
+                None => return,
+            };
+
+            let keys = env.sorted_keys();
+
+            // Edition de variable
+            if tui_state.editing_variable {
+                let key_style = if tui_state.editing_variable_key {
+                    Style::default().fg(Color::Yellow).add_modifier(Modifier::UNDERLINED)
+                } else {
+                    Style::default().fg(Color::Cyan)
+                };
+                let value_style = if !tui_state.editing_variable_key {
+                    Style::default().fg(Color::Yellow).add_modifier(Modifier::UNDERLINED)
+                } else {
+                    Style::default().fg(Color::White)
+                };
+
+                let key_display = if tui_state.variable_key_input.is_empty() {
+                    "cle"
+                } else {
+                    &tui_state.variable_key_input
+                };
+                let value_display = if tui_state.variable_value_input.is_empty() {
+                    "valeur"
+                } else {
+                    &tui_state.variable_value_input
+                };
+
+                // Afficher les variables existantes + la ligne d'edition
+                let mut lines: Vec<Line> = keys
+                    .iter()
+                    .enumerate()
+                    .filter(|(i, _)| *i != tui_state.environment_variable_index || tui_state.variable_key_input.is_empty())
+                    .map(|(_, k)| {
+                        let v = env.variables.get(k).unwrap();
+                        Line::from(vec![
+                            Span::styled("  ", Style::default()),
+                            Span::styled(k.as_str(), Style::default().fg(Color::Cyan)),
+                            Span::styled(" = ", Style::default().fg(Color::DarkGray)),
+                            Span::styled(v.as_str(), Style::default().fg(Color::White)),
+                        ])
+                    })
+                    .collect();
+
+                lines.push(Line::from(""));
+                lines.push(Line::from(vec![
+                    Span::styled("  ", Style::default()),
+                    Span::styled(key_display, key_style),
+                    Span::styled(" = ", Style::default().fg(Color::DarkGray)),
+                    Span::styled(value_display, value_style),
+                ]));
+
+                f.render_widget(Paragraph::new(lines), inner);
+
+                // Curseur
+                let edit_line_y = inner.y + keys.len() as u16 + 1;
+                let cursor_x = if tui_state.editing_variable_key {
+                    inner.x + 2 + tui_state.variable_key_cursor as u16
+                } else {
+                    let key_len = if tui_state.variable_key_input.is_empty() {
+                        3 // "cle"
+                    } else {
+                        tui_state.variable_key_input.len()
+                    };
+                    inner.x + 2 + key_len as u16 + 3 + tui_state.variable_value_cursor as u16
+                };
+                f.set_cursor_position((cursor_x, edit_line_y));
+                return;
+            }
+
+            if keys.is_empty() {
+                let placeholder = vec![
+                    Line::from(""),
+                    Line::from(Span::styled(
+                        "  Aucune variable.",
+                        Style::default().fg(Color::DarkGray),
+                    )),
+                    Line::from(""),
+                    Line::from(vec![
+                        Span::styled("  Appuyez sur ", Style::default().fg(Color::DarkGray)),
+                        Span::styled("a", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+                        Span::styled(" pour en ajouter une.", Style::default().fg(Color::DarkGray)),
+                    ]),
+                ];
+                f.render_widget(Paragraph::new(placeholder), inner);
+                return;
+            }
+
+            let items: Vec<ListItem> = keys
+                .iter()
+                .enumerate()
+                .map(|(i, key)| {
+                    let is_selected = i == tui_state.environment_variable_index;
+                    let marker = if is_selected { "▸ " } else { "  " };
+                    let style = if is_selected {
+                        Style::default().bg(Color::DarkGray)
+                    } else {
+                        Style::default()
+                    };
+                    let value = env.variables.get(key).unwrap();
+
+                    ListItem::new(Line::from(vec![
+                        Span::styled(marker, Style::default().fg(Color::Green)),
+                        Span::styled(key.as_str(), Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+                        Span::styled(" = ", Style::default().fg(Color::DarkGray)),
+                        Span::styled(value.as_str(), Style::default().fg(Color::White)),
                     ])).style(style)
                 })
                 .collect();

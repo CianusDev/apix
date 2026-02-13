@@ -7,5 +7,5 @@ pub mod history;
 pub use request::{Method, Request};
 pub use response::Response;
 pub use collection::{Collection, CollectionEntry, Collections};
-pub use environment::Environment;
+pub use environment::{Environment, Environments};
 pub use history::{History, HistoryEntry};

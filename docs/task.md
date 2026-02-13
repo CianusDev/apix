@@ -71,9 +71,10 @@
 
 ## Phase 6 — Environnements
 
-- [ ] Fichier d'environnement (`~/.apix/environments.json`)
-- [ ] Support des variables (`{{BASE_URL}}`, `{{TOKEN}}`)
-- [ ] Substitution automatique avant envoi
+- [x] Fichier d'environnement (`~/.apix/environments.json`) — modele Environment/Environments avec load/save
+- [x] Support des variables (`{{BASE_URL}}`, `{{TOKEN}}`) — fonction substitute_variables()
+- [x] Substitution automatique avant envoi (TUI + CLI)
+- [x] Panneau TUI environnements (touche e, navigation 2 niveaux, edition variables, indicateur [ENV: nom])
 
 ---
 

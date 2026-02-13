@@ -109,6 +109,7 @@ async fn run_loop(
                         }
                     }
 
+                    let request = app.apply_environment(&request);
                     let _ = request_tx.send(request);
                 }
             }

@@ -51,7 +51,8 @@ async fn main() -> errors::Result<()> {
         }
     }
 
-    println!("{} request to {}", method, url);
+    let request = app.apply_environment(&request);
+    println!("{} request to {}", method, request.url);
     let response = app.http_client.execute(&request).await?;
     println!("{}", response.format());
 

@@ -1,7 +1,8 @@
 use crate::config::Settings;
 use crate::errors::Result;
 use crate::http::HttpClient;
-use crate::models::{CollectionEntry, Collections, History, HistoryEntry, Method, Request, Response};
+use crate::models::{CollectionEntry, Collections, Environments, History, HistoryEntry, Method, Request, Response};
+use crate::models::environment::substitute_variables;
 
 pub struct App {
     pub settings: Settings,
@@ -12,6 +13,8 @@ pub struct App {
     pub error_message: Option<String>,
     pub history: History,
     pub collections: Collections,
+    pub environments: Environments,
+    pub active_environment: Option<usize>,
 }
 
 impl App {
@@ -29,6 +32,8 @@ impl App {
             error_message: None,
             history: History::default(),
             collections: Collections::default(),
+            environments: Environments::default(),
+            active_environment: None,
         })
     }
 
@@ -36,6 +41,7 @@ impl App {
         self.settings.ensure_dirs()?;
         self.history = History::load(&self.settings.history_file)?;
         self.collections = Collections::load(&self.settings.collections_file)?;
+        self.environments = Environments::load(&self.settings.environments_file)?;
         Ok(())
     }
 
@@ -117,6 +123,40 @@ impl App {
             col.add_entry(entry);
             self.save_collections();
         }
+    }
+
+    // --- Environments ---
+
+    pub fn save_environments(&self) {
+        let _ = self.environments.save(&self.settings.environments_file);
+    }
+
+    /// Clone la requete et substitue les variables de l'environnement actif
+    pub fn apply_environment(&self, request: &Request) -> Request {
+        let env = match self.active_environment {
+            Some(idx) => match self.environments.items.get(idx) {
+                Some(env) => env,
+                None => return request.clone(),
+            },
+            None => return request.clone(),
+        };
+
+        let mut req = request.clone();
+        req.url = substitute_variables(&req.url, env);
+        req.headers = req
+            .headers
+            .iter()
+            .map(|(k, v)| {
+                (
+                    substitute_variables(k, env),
+                    substitute_variables(v, env),
+                )
+            })
+            .collect();
+        if let Some(body) = &req.body {
+            req.body = Some(substitute_variables(body, env));
+        }
+        req
     }
 
     pub fn load_collection_entry(&mut self, col_index: usize, entry_index: usize) {

@@ -18,6 +18,12 @@ pub enum CollectionsView {
     RequestList,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum EnvironmentsView {
+    EnvironmentList,
+    VariableList,
+}
+
 #[derive(Debug)]
 pub struct TuiState {
     pub focused_panel: FocusedPanel,
@@ -46,6 +52,21 @@ pub struct TuiState {
     pub editing_collection_name: bool,
     pub collection_name_input: String,
     pub collection_name_cursor: usize,
+    // Environments
+    pub show_environments: bool,
+    pub environments_view: EnvironmentsView,
+    pub environment_index: usize,
+    pub environment_variable_index: usize,
+    pub editing_environment_name: bool,
+    pub environment_name_input: String,
+    pub environment_name_cursor: usize,
+    // Edition de variable (cle/valeur)
+    pub editing_variable: bool,
+    pub variable_key_input: String,
+    pub variable_value_input: String,
+    pub variable_key_cursor: usize,
+    pub variable_value_cursor: usize,
+    pub editing_variable_key: bool,
 }
 
 impl TuiState {
@@ -74,6 +95,19 @@ impl TuiState {
             editing_collection_name: false,
             collection_name_input: String::new(),
             collection_name_cursor: 0,
+            show_environments: false,
+            environments_view: EnvironmentsView::EnvironmentList,
+            environment_index: 0,
+            environment_variable_index: 0,
+            editing_environment_name: false,
+            environment_name_input: String::new(),
+            environment_name_cursor: 0,
+            editing_variable: false,
+            variable_key_input: String::new(),
+            variable_value_input: String::new(),
+            variable_key_cursor: 0,
+            variable_value_cursor: 0,
+            editing_variable_key: true,
         }
     }
 
