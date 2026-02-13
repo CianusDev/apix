@@ -7,6 +7,7 @@ use ratatui::{
 };
 
 use crate::app::App;
+use crate::models::auth::AUTH_TYPE_NAMES;
 use crate::models::Method;
 
 use super::state::{CollectionsView, EnvironmentsView, FocusedPanel, RequestField, TuiState};
@@ -193,6 +194,17 @@ fn draw_help_bar(f: &mut Frame, area: Rect, tui_state: &TuiState) {
             Span::styled("q", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
             Span::styled(" quitter", Style::default().fg(Color::White)),
         ])
+    } else if tui_state.is_editing && tui_state.focused_request_field == RequestField::Auth {
+        Line::from(vec![
+            Span::styled(" ←→", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(" type  ", Style::default().fg(Color::White)),
+            Span::styled("Tab", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(" champ  ", Style::default().fg(Color::White)),
+            Span::styled("Enter", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(" valider  ", Style::default().fg(Color::White)),
+            Span::styled("Esc", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(" annuler", Style::default().fg(Color::White)),
+        ])
     } else if tui_state.is_editing && tui_state.focused_request_field == RequestField::Headers {
         Line::from(vec![
             Span::styled(" Tab", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
@@ -273,6 +285,7 @@ fn draw_request_panel(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiState
         .constraints([
             Constraint::Length(3), // Method
             Constraint::Length(3), // URL
+            Constraint::Length(3), // Auth
             Constraint::Length(5), // Headers
             Constraint::Min(3),   // Body
         ])
@@ -280,8 +293,9 @@ fn draw_request_panel(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiState
 
     draw_method_field(f, chunks[0], app, tui_state);
     draw_url_field(f, chunks[1], app, tui_state);
-    draw_headers_field(f, chunks[2], app, tui_state);
-    draw_body_field(f, chunks[3], app, tui_state);
+    draw_auth_field(f, chunks[2], app, tui_state);
+    draw_headers_field(f, chunks[3], app, tui_state);
+    draw_body_field(f, chunks[4], app, tui_state);
 }
 
 fn is_field_active(tui_state: &TuiState, field: RequestField) -> bool {
@@ -345,6 +359,128 @@ fn draw_url_field(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiState) {
         let cursor_y = area.y + 1;
         f.set_cursor_position((cursor_x, cursor_y));
     }
+}
+
+fn draw_auth_field(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiState) {
+    let active = is_field_active(tui_state, RequestField::Auth);
+    let editing = tui_state.is_editing && active;
+
+    let block = field_block(tui_state, RequestField::Auth, " Auth ");
+    let inner = block.inner(area);
+    f.render_widget(block, area);
+
+    if editing {
+        let type_name = AUTH_TYPE_NAMES[tui_state.auth_type_index];
+        let mut spans = vec![
+            Span::styled("\u{25C0} ", Style::default().fg(Color::Cyan)),
+            Span::styled(
+                format!("{:>7}", type_name),
+                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(" \u{25B6}  ", Style::default().fg(Color::Cyan)),
+        ];
+
+        // Ajouter les champs selon le type
+        match tui_state.auth_type_index {
+            1 => {
+                // Bearer
+                let display = if tui_state.auth_token_input.is_empty() { "token" } else { &tui_state.auth_token_input };
+                spans.push(Span::styled(display, Style::default().fg(Color::White).add_modifier(Modifier::UNDERLINED)));
+            }
+            2 => {
+                // Basic
+                let u_style = if tui_state.auth_editing_username {
+                    Style::default().fg(Color::Yellow).add_modifier(Modifier::UNDERLINED)
+                } else {
+                    Style::default().fg(Color::White)
+                };
+                let p_style = if !tui_state.auth_editing_username {
+                    Style::default().fg(Color::Yellow).add_modifier(Modifier::UNDERLINED)
+                } else {
+                    Style::default().fg(Color::White)
+                };
+                let u_display = if tui_state.auth_username_input.is_empty() { "user" } else { &tui_state.auth_username_input };
+                let p_display = if tui_state.auth_password_input.is_empty() { "pass" } else { &tui_state.auth_password_input };
+                spans.push(Span::styled(u_display, u_style));
+                spans.push(Span::styled(":", Style::default().fg(Color::DarkGray)));
+                spans.push(Span::styled(p_display, p_style));
+            }
+            3 => {
+                // API Key
+                let k_style = if tui_state.auth_editing_key_name {
+                    Style::default().fg(Color::Yellow).add_modifier(Modifier::UNDERLINED)
+                } else {
+                    Style::default().fg(Color::White)
+                };
+                let v_style = if !tui_state.auth_editing_key_name {
+                    Style::default().fg(Color::Yellow).add_modifier(Modifier::UNDERLINED)
+                } else {
+                    Style::default().fg(Color::White)
+                };
+                let k_display = if tui_state.auth_key_name_input.is_empty() { "Header" } else { &tui_state.auth_key_name_input };
+                let v_display = if tui_state.auth_key_value_input.is_empty() { "value" } else { &tui_state.auth_key_value_input };
+                spans.push(Span::styled(k_display, k_style));
+                spans.push(Span::styled(": ", Style::default().fg(Color::DarkGray)));
+                spans.push(Span::styled(v_display, v_style));
+            }
+            _ => {
+                // None
+                spans.push(Span::styled("(desactive)", Style::default().fg(Color::DarkGray)));
+            }
+        }
+
+        f.render_widget(Paragraph::new(Line::from(spans)), inner);
+
+        // Curseur
+        let prefix_len = 13u16; // "< Type___ >  " = ~13
+        match tui_state.auth_type_index {
+            1 => {
+                let cx = inner.x + prefix_len + tui_state.auth_token_cursor as u16;
+                f.set_cursor_position((cx, inner.y));
+            }
+            2 => {
+                if tui_state.auth_editing_username {
+                    let cx = inner.x + prefix_len + tui_state.auth_username_cursor as u16;
+                    f.set_cursor_position((cx, inner.y));
+                } else {
+                    let u_len = if tui_state.auth_username_input.is_empty() { 4 } else { tui_state.auth_username_input.len() };
+                    let cx = inner.x + prefix_len + u_len as u16 + 1 + tui_state.auth_password_cursor as u16;
+                    f.set_cursor_position((cx, inner.y));
+                }
+            }
+            3 => {
+                if tui_state.auth_editing_key_name {
+                    let cx = inner.x + prefix_len + tui_state.auth_key_name_cursor as u16;
+                    f.set_cursor_position((cx, inner.y));
+                } else {
+                    let k_len = if tui_state.auth_key_name_input.is_empty() { 6 } else { tui_state.auth_key_name_input.len() };
+                    let cx = inner.x + prefix_len + k_len as u16 + 2 + tui_state.auth_key_value_cursor as u16;
+                    f.set_cursor_position((cx, inner.y));
+                }
+            }
+            _ => {}
+        }
+        return;
+    }
+
+    // Affichage en navigation
+    let text = match &app.current_request.auth {
+        None => {
+            let hint = if active { "  Enter pour configurer" } else { "" };
+            Line::from(vec![
+                Span::styled(" (aucune)", Style::default().fg(Color::DarkGray)),
+                Span::styled(hint, Style::default().fg(Color::DarkGray)),
+            ])
+        }
+        Some(auth) => Line::from(vec![
+            Span::styled(
+                format!(" {}", auth.display_summary()),
+                Style::default().fg(Color::Cyan),
+            ),
+        ]),
+    };
+
+    f.render_widget(Paragraph::new(text), inner);
 }
 
 fn draw_headers_field(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiState) {

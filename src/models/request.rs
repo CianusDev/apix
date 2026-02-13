@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+use super::auth::Auth;
 use crate::errors::ApixError;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -43,6 +44,8 @@ pub struct Request {
     pub url: String,
     pub headers: Vec<(String, String)>,
     pub body: Option<String>,
+    #[serde(default)]
+    pub auth: Option<Auth>,
 }
 
 impl Request {
@@ -52,6 +55,7 @@ impl Request {
             url,
             headers: Vec::new(),
             body: None,
+            auth: None,
         }
     }
 }

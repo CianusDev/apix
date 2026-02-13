@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 use crate::errors::{ApixError, Result};
+use crate::models::auth::Auth;
 use crate::models::{Method, Request, Response};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -11,6 +12,8 @@ pub struct HistoryEntry {
     pub url: String,
     pub request_headers: Vec<(String, String)>,
     pub request_body: Option<String>,
+    #[serde(default)]
+    pub auth: Option<Auth>,
     pub status: Option<u16>,
     pub response_body: Option<String>,
 }
@@ -25,6 +28,7 @@ impl HistoryEntry {
             url: request.url.clone(),
             request_headers: request.headers.clone(),
             request_body: request.body.clone(),
+            auth: request.auth.clone(),
             status: Some(response.status),
             response_body: body_str,
         }
@@ -35,6 +39,7 @@ impl HistoryEntry {
         let mut request = Request::new(method, self.url.clone());
         request.headers = self.request_headers.clone();
         request.body = self.request_body.clone();
+        request.auth = self.auth.clone();
         Ok(request)
     }
 
@@ -96,6 +101,7 @@ mod tests {
             url: "https://example.com".to_string(),
             request_headers: vec![("Accept".to_string(), "application/json".to_string())],
             request_body: None,
+            auth: None,
             status: Some(200),
             response_body: Some(r#"{"ok": true}"#.to_string()),
         }

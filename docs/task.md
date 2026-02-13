@@ -80,6 +80,9 @@
 
 ## Phase 7 — Authentification
 
-- [ ] Bearer Token
-- [ ] Basic Auth
-- [ ] API Key
+- [x] Bearer Token (Auth::BearerToken → header Authorization: Bearer <token>)
+- [x] Basic Auth (Auth::BasicAuth → header Authorization: Basic base64(user:pass))
+- [x] API Key (Auth::ApiKey → header custom configurable)
+- [x] Champ Auth dans la TUI (selecteur type ←→, edition, Tab champs, barre d'aide)
+- [x] Support des variables d'environnement dans l'auth ({{TOKEN}})
+- [x] Auth sauvegardee dans collections et historique

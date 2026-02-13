@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 use crate::errors::{ApixError, Result};
+use crate::models::auth::Auth;
 use crate::models::{Method, Request};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -11,6 +12,8 @@ pub struct CollectionEntry {
     pub url: String,
     pub headers: Vec<(String, String)>,
     pub body: Option<String>,
+    #[serde(default)]
+    pub auth: Option<Auth>,
 }
 
 impl CollectionEntry {
@@ -21,6 +24,7 @@ impl CollectionEntry {
             url: request.url.clone(),
             headers: request.headers.clone(),
             body: request.body.clone(),
+            auth: request.auth.clone(),
         }
     }
 
@@ -29,6 +33,7 @@ impl CollectionEntry {
         let mut request = Request::new(method, self.url.clone());
         request.headers = self.headers.clone();
         request.body = self.body.clone();
+        request.auth = self.auth.clone();
         Ok(request)
     }
 }
@@ -120,6 +125,7 @@ mod tests {
             url: "https://api.example.com/users".to_string(),
             headers: vec![],
             body: None,
+            auth: None,
         };
         col.add_entry(entry);
         assert_eq!(col.entries.len(), 1);

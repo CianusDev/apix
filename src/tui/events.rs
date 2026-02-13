@@ -2,6 +2,7 @@ use crossterm::event::{self, Event, KeyCode, KeyModifiers};
 use std::time::Duration;
 
 use crate::app::App;
+use crate::models::auth::{Auth, AUTH_TYPE_NAMES};
 use crate::models::Method;
 
 use super::state::{CollectionsView, EnvironmentsView, FocusedPanel, RequestField, TuiState};
@@ -141,6 +142,46 @@ fn handle_navigation(app: &mut App, tui_state: &mut TuiState, code: KeyCode) -> 
                             app.current_request.body.clone().unwrap_or_default();
                         tui_state.body_cursor = tui_state.body_input.len();
                     }
+                    RequestField::Auth => {
+                        // Charger l'auth courante dans les inputs
+                        match &app.current_request.auth {
+                            None => {
+                                tui_state.auth_type_index = 0;
+                                tui_state.auth_token_input.clear();
+                                tui_state.auth_token_cursor = 0;
+                                tui_state.auth_username_input.clear();
+                                tui_state.auth_password_input.clear();
+                                tui_state.auth_username_cursor = 0;
+                                tui_state.auth_password_cursor = 0;
+                                tui_state.auth_key_name_input.clear();
+                                tui_state.auth_key_value_input.clear();
+                                tui_state.auth_key_name_cursor = 0;
+                                tui_state.auth_key_value_cursor = 0;
+                            }
+                            Some(Auth::BearerToken { token }) => {
+                                tui_state.auth_type_index = 1;
+                                tui_state.auth_token_input = token.clone();
+                                tui_state.auth_token_cursor = token.len();
+                            }
+                            Some(Auth::BasicAuth { username, password }) => {
+                                tui_state.auth_type_index = 2;
+                                tui_state.auth_username_input = username.clone();
+                                tui_state.auth_password_input = password.clone();
+                                tui_state.auth_username_cursor = username.len();
+                                tui_state.auth_password_cursor = password.len();
+                                tui_state.auth_editing_username = true;
+                            }
+                            Some(Auth::ApiKey { header, value }) => {
+                                tui_state.auth_type_index = 3;
+                                tui_state.auth_key_name_input = header.clone();
+                                tui_state.auth_key_value_input = value.clone();
+                                tui_state.auth_key_name_cursor = header.len();
+                                tui_state.auth_key_value_cursor = value.len();
+                                tui_state.auth_editing_key_name = true;
+                            }
+                        }
+                        tui_state.is_editing = true;
+                    }
                     RequestField::Headers => {
                         if app.current_request.headers.is_empty() {
                             // Ajouter un nouveau header et entrer en edition
@@ -233,6 +274,9 @@ fn handle_navigation(app: &mut App, tui_state: &mut TuiState, code: KeyCode) -> 
 fn handle_editing(app: &mut App, tui_state: &mut TuiState, code: KeyCode) -> AppEvent {
     if tui_state.focused_request_field == RequestField::Headers {
         return handle_header_editing(app, tui_state, code);
+    }
+    if tui_state.focused_request_field == RequestField::Auth {
+        return handle_auth_editing(app, tui_state, code);
     }
 
     match code {
@@ -865,6 +909,123 @@ fn handle_variable_editing(
                 if tui_state.variable_value_cursor < tui_state.variable_value_input.len() {
                     tui_state.variable_value_cursor += 1;
                 }
+            }
+        }
+
+        _ => {}
+    }
+    AppEvent::None
+}
+
+fn handle_auth_editing(app: &mut App, tui_state: &mut TuiState, code: KeyCode) -> AppEvent {
+    match code {
+        KeyCode::Esc => {
+            tui_state.is_editing = false;
+        }
+
+        // Cycle auth type
+        KeyCode::Left => {
+            if tui_state.auth_type_index == 0 {
+                tui_state.auth_type_index = AUTH_TYPE_NAMES.len() - 1;
+            } else {
+                tui_state.auth_type_index -= 1;
+            }
+        }
+        KeyCode::Right => {
+            tui_state.auth_type_index = (tui_state.auth_type_index + 1) % AUTH_TYPE_NAMES.len();
+        }
+
+        KeyCode::Enter => {
+            let auth = match tui_state.auth_type_index {
+                0 => None,
+                1 => Some(Auth::BearerToken {
+                    token: tui_state.auth_token_input.clone(),
+                }),
+                2 => Some(Auth::BasicAuth {
+                    username: tui_state.auth_username_input.clone(),
+                    password: tui_state.auth_password_input.clone(),
+                }),
+                3 => Some(Auth::ApiKey {
+                    header: tui_state.auth_key_name_input.clone(),
+                    value: tui_state.auth_key_value_input.clone(),
+                }),
+                _ => None,
+            };
+            app.set_auth(auth);
+            tui_state.is_editing = false;
+        }
+
+        KeyCode::Tab => {
+            match tui_state.auth_type_index {
+                2 => tui_state.auth_editing_username = !tui_state.auth_editing_username,
+                3 => tui_state.auth_editing_key_name = !tui_state.auth_editing_key_name,
+                _ => {}
+            }
+        }
+
+        KeyCode::Char(c) => {
+            match tui_state.auth_type_index {
+                1 => {
+                    tui_state.auth_token_input.insert(tui_state.auth_token_cursor, c);
+                    tui_state.auth_token_cursor += 1;
+                }
+                2 => {
+                    if tui_state.auth_editing_username {
+                        tui_state.auth_username_input.insert(tui_state.auth_username_cursor, c);
+                        tui_state.auth_username_cursor += 1;
+                    } else {
+                        tui_state.auth_password_input.insert(tui_state.auth_password_cursor, c);
+                        tui_state.auth_password_cursor += 1;
+                    }
+                }
+                3 => {
+                    if tui_state.auth_editing_key_name {
+                        tui_state.auth_key_name_input.insert(tui_state.auth_key_name_cursor, c);
+                        tui_state.auth_key_name_cursor += 1;
+                    } else {
+                        tui_state.auth_key_value_input.insert(tui_state.auth_key_value_cursor, c);
+                        tui_state.auth_key_value_cursor += 1;
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        KeyCode::Backspace => {
+            match tui_state.auth_type_index {
+                1 => {
+                    if tui_state.auth_token_cursor > 0 {
+                        tui_state.auth_token_input.remove(tui_state.auth_token_cursor - 1);
+                        tui_state.auth_token_cursor -= 1;
+                    }
+                }
+                2 => {
+                    if tui_state.auth_editing_username {
+                        if tui_state.auth_username_cursor > 0 {
+                            tui_state.auth_username_input.remove(tui_state.auth_username_cursor - 1);
+                            tui_state.auth_username_cursor -= 1;
+                        }
+                    } else {
+                        if tui_state.auth_password_cursor > 0 {
+                            tui_state.auth_password_input.remove(tui_state.auth_password_cursor - 1);
+                            tui_state.auth_password_cursor -= 1;
+                        }
+                    }
+                }
+                3 => {
+                    if tui_state.auth_editing_key_name {
+                        if tui_state.auth_key_name_cursor > 0 {
+                            tui_state.auth_key_name_input.remove(tui_state.auth_key_name_cursor - 1);
+                            tui_state.auth_key_name_cursor -= 1;
+                        }
+                    } else {
+                        if tui_state.auth_key_value_cursor > 0 {
+                            tui_state.auth_key_value_input.remove(tui_state.auth_key_value_cursor - 1);
+                            tui_state.auth_key_value_cursor -= 1;
+                        }
+                    }
+                }
+                _ => {}
             }
         }
 

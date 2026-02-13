@@ -24,6 +24,12 @@ impl<'a> RequestBuilder<'a> {
             req_builder = req_builder.header(key, value);
         }
 
+        // Appliquer l'authentification
+        if let Some(auth) = &self.request.auth {
+            let (name, value) = auth.to_header();
+            req_builder = req_builder.header(name, value);
+        }
+
         if let Some(body) = &self.request.body {
             req_builder = req_builder.body(body.clone());
         }

@@ -1,3 +1,4 @@
+pub mod auth;
 pub mod request;
 pub mod response;
 pub mod collection;
@@ -9,3 +10,4 @@ pub use response::Response;
 pub use collection::{Collection, CollectionEntry, Collections};
 pub use environment::{Environment, Environments};
 pub use history::{History, HistoryEntry};
+pub use auth::Auth;

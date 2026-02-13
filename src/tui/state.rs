@@ -8,6 +8,7 @@ pub enum FocusedPanel {
 pub enum RequestField {
     Method,
     Url,
+    Auth,
     Headers,
     Body,
 }
@@ -67,6 +68,20 @@ pub struct TuiState {
     pub variable_key_cursor: usize,
     pub variable_value_cursor: usize,
     pub editing_variable_key: bool,
+    // Auth editing
+    pub auth_type_index: usize, // 0=None, 1=Bearer, 2=Basic, 3=ApiKey
+    pub auth_token_input: String,
+    pub auth_token_cursor: usize,
+    pub auth_username_input: String,
+    pub auth_password_input: String,
+    pub auth_username_cursor: usize,
+    pub auth_password_cursor: usize,
+    pub auth_editing_username: bool, // true=username, false=password
+    pub auth_key_name_input: String,
+    pub auth_key_value_input: String,
+    pub auth_key_name_cursor: usize,
+    pub auth_key_value_cursor: usize,
+    pub auth_editing_key_name: bool, // true=header name, false=value
 }
 
 impl TuiState {
@@ -108,13 +123,27 @@ impl TuiState {
             variable_key_cursor: 0,
             variable_value_cursor: 0,
             editing_variable_key: true,
+            auth_type_index: 0,
+            auth_token_input: String::new(),
+            auth_token_cursor: 0,
+            auth_username_input: String::new(),
+            auth_password_input: String::new(),
+            auth_username_cursor: 0,
+            auth_password_cursor: 0,
+            auth_editing_username: true,
+            auth_key_name_input: String::new(),
+            auth_key_value_input: String::new(),
+            auth_key_name_cursor: 0,
+            auth_key_value_cursor: 0,
+            auth_editing_key_name: true,
         }
     }
 
     pub fn next_request_field(&mut self) {
         self.focused_request_field = match self.focused_request_field {
             RequestField::Method => RequestField::Url,
-            RequestField::Url => RequestField::Headers,
+            RequestField::Url => RequestField::Auth,
+            RequestField::Auth => RequestField::Headers,
             RequestField::Headers => RequestField::Body,
             RequestField::Body => RequestField::Method,
         };
@@ -124,7 +153,8 @@ impl TuiState {
         self.focused_request_field = match self.focused_request_field {
             RequestField::Method => RequestField::Body,
             RequestField::Url => RequestField::Method,
-            RequestField::Headers => RequestField::Url,
+            RequestField::Auth => RequestField::Url,
+            RequestField::Headers => RequestField::Auth,
             RequestField::Body => RequestField::Headers,
         };
     }

@@ -1,7 +1,7 @@
 use crate::config::Settings;
 use crate::errors::Result;
 use crate::http::HttpClient;
-use crate::models::{CollectionEntry, Collections, Environments, History, HistoryEntry, Method, Request, Response};
+use crate::models::{Auth, CollectionEntry, Collections, Environments, History, HistoryEntry, Method, Request, Response};
 use crate::models::environment::substitute_variables;
 
 pub struct App {
@@ -125,6 +125,12 @@ impl App {
         }
     }
 
+    // --- Auth ---
+
+    pub fn set_auth(&mut self, auth: Option<Auth>) {
+        self.current_request.auth = auth;
+    }
+
     // --- Environments ---
 
     pub fn save_environments(&self) {
@@ -155,6 +161,9 @@ impl App {
             .collect();
         if let Some(body) = &req.body {
             req.body = Some(substitute_variables(body, env));
+        }
+        if let Some(auth) = &req.auth {
+            req.auth = Some(auth.substitute_env(env));
         }
         req
     }
