@@ -31,7 +31,7 @@ async fn main() -> errors::Result<()> {
     let url = args[2].clone();
     let (headers, body) = parse_options(&args[3..])?;
 
-    let app = App::new()?;
+    let mut app = App::new()?;
     app.initialize()?;
 
     let mut request = Request::new(method, url.clone());
@@ -54,6 +54,11 @@ async fn main() -> errors::Result<()> {
     println!("{} request to {}", method, url);
     let response = app.http_client.execute(&request).await?;
     println!("{}", response.format());
+
+    // Sauvegarder dans l'historique
+    let entry = models::HistoryEntry::from_request_response(&request, &response);
+    app.history.add(entry);
+    let _ = app.history.save(&app.settings.history_file);
 
     Ok(())
 }

@@ -35,8 +35,20 @@ pub fn handle_events(
 }
 
 fn handle_navigation(app: &mut App, tui_state: &mut TuiState, code: KeyCode) -> AppEvent {
+    // Mode historique : gestion separee
+    if tui_state.show_history {
+        return handle_history_navigation(app, tui_state, code);
+    }
+
     match code {
         KeyCode::Char('q') => AppEvent::Quit,
+
+        KeyCode::Char('h') => {
+            tui_state.show_history = true;
+            tui_state.history_index = 0;
+            tui_state.focused_panel = FocusedPanel::Response;
+            AppEvent::None
+        }
 
         KeyCode::Tab => {
             tui_state.focused_panel = match tui_state.focused_panel {
@@ -260,6 +272,63 @@ fn handle_editing(app: &mut App, tui_state: &mut TuiState, code: KeyCode) -> App
         _ => {}
     }
     AppEvent::None
+}
+
+fn handle_history_navigation(app: &mut App, tui_state: &mut TuiState, code: KeyCode) -> AppEvent {
+    match code {
+        KeyCode::Char('q') => AppEvent::Quit,
+
+        KeyCode::Esc | KeyCode::Char('h') => {
+            tui_state.show_history = false;
+            AppEvent::None
+        }
+
+        KeyCode::Up => {
+            tui_state.history_index = tui_state.history_index.saturating_sub(1);
+            AppEvent::None
+        }
+
+        KeyCode::Down => {
+            if !app.history.entries.is_empty() {
+                let max = app.history.entries.len() - 1;
+                if tui_state.history_index < max {
+                    tui_state.history_index += 1;
+                }
+            }
+            AppEvent::None
+        }
+
+        KeyCode::Enter => {
+            if !app.history.entries.is_empty() {
+                app.load_history_entry(tui_state.history_index);
+                tui_state.show_history = false;
+                tui_state.response_scroll = 0;
+            }
+            AppEvent::None
+        }
+
+        KeyCode::Char('d') => {
+            if !app.history.entries.is_empty() {
+                app.remove_history_entry(tui_state.history_index);
+                if tui_state.history_index > 0
+                    && tui_state.history_index >= app.history.entries.len()
+                {
+                    tui_state.history_index -= 1;
+                }
+            }
+            AppEvent::None
+        }
+
+        KeyCode::Tab => {
+            tui_state.focused_panel = match tui_state.focused_panel {
+                FocusedPanel::Request => FocusedPanel::Response,
+                FocusedPanel::Response => FocusedPanel::Request,
+            };
+            AppEvent::None
+        }
+
+        _ => AppEvent::None,
+    }
 }
 
 fn handle_header_editing(app: &mut App, tui_state: &mut TuiState, code: KeyCode) -> AppEvent {

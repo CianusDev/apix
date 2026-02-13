@@ -53,10 +53,10 @@
 
 ## Phase 4 — Historique
 
-- [ ] Creer le module `storage/` (history, collections)
-- [ ] Sauvegarde automatique des requetes dans `~/.apix/history.json`
-- [ ] Consultation de l'historique dans la TUI
-- [ ] Re-execution rapide depuis l'historique
+- [x] Creer le module `models/history.rs` (HistoryEntry, History avec load/save)
+- [x] Sauvegarde automatique des requetes dans `~/.apix/history.json`
+- [x] Consultation de l'historique dans la TUI (touche h, panneau dedie)
+- [x] Re-execution rapide depuis l'historique (Enter charge dans Request+Response)
 
 ---
 

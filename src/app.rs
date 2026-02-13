@@ -1,7 +1,7 @@
 use crate::config::Settings;
 use crate::errors::Result;
 use crate::http::HttpClient;
-use crate::models::{Method, Request, Response};
+use crate::models::{History, HistoryEntry, Method, Request, Response};
 
 pub struct App {
     pub settings: Settings,
@@ -10,6 +10,7 @@ pub struct App {
     pub current_response: Option<Response>,
     pub is_loading: bool,
     pub error_message: Option<String>,
+    pub history: History,
 }
 
 impl App {
@@ -25,11 +26,13 @@ impl App {
             current_response: None,
             is_loading: false,
             error_message: None,
+            history: History::default(),
         })
     }
 
-    pub fn initialize(&self) -> Result<()> {
+    pub fn initialize(&mut self) -> Result<()> {
         self.settings.ensure_dirs()?;
+        self.history = History::load(&self.settings.history_file)?;
         Ok(())
     }
 
@@ -70,6 +73,11 @@ impl App {
         self.is_loading = false;
         match response {
             Ok(resp) => {
+                // Sauvegarder dans l'historique
+                let entry = HistoryEntry::from_request_response(&self.current_request, &resp);
+                self.history.add(entry);
+                let _ = self.history.save(&self.settings.history_file);
+
                 self.current_response = Some(resp);
                 self.error_message = None;
             }
@@ -77,6 +85,21 @@ impl App {
                 self.error_message = Some(e.to_string());
             }
         }
+    }
+
+    pub fn load_history_entry(&mut self, index: usize) {
+        if let Some(entry) = self.history.entries.get(index) {
+            if let Ok(request) = entry.to_request() {
+                self.current_request = request;
+                self.current_response = entry.to_response();
+                self.error_message = None;
+            }
+        }
+    }
+
+    pub fn remove_history_entry(&mut self, index: usize) {
+        self.history.remove(index);
+        let _ = self.history.save(&self.settings.history_file);
     }
 }
 

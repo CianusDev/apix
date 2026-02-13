@@ -29,6 +29,9 @@ pub struct TuiState {
     pub header_key_cursor: usize,
     pub header_value_cursor: usize,
     pub editing_header_key: bool, // true = editing key, false = editing value
+    // History
+    pub show_history: bool,
+    pub history_index: usize,
 }
 
 impl TuiState {
@@ -48,6 +51,8 @@ impl TuiState {
             header_key_cursor: 0,
             header_value_cursor: 0,
             editing_header_key: true,
+            show_history: false,
+            history_index: 0,
         }
     }
 

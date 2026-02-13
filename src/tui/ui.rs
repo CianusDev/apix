@@ -40,6 +40,8 @@ pub fn draw(f: &mut Frame, app: &App, tui_state: &TuiState) {
             Span::styled("[EDIT] ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))
         } else if app.is_loading {
             Span::styled("[LOADING] ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))
+        } else if tui_state.show_history {
+            Span::styled("[HISTORY] ", Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD))
         } else {
             Span::raw("")
         },
@@ -53,14 +55,33 @@ pub fn draw(f: &mut Frame, app: &App, tui_state: &TuiState) {
         .split(main_chunks[1]);
 
     draw_request_panel(f, content_chunks[0], app, tui_state);
-    draw_response_panel(f, content_chunks[1], app, tui_state);
+    if tui_state.show_history {
+        draw_history_panel(f, content_chunks[1], app, tui_state);
+    } else {
+        draw_response_panel(f, content_chunks[1], app, tui_state);
+    }
 
     // Barre d'aide
     draw_help_bar(f, main_chunks[2], tui_state);
 }
 
 fn draw_help_bar(f: &mut Frame, area: Rect, tui_state: &TuiState) {
-    let help = if tui_state.is_editing && tui_state.focused_request_field == RequestField::Headers {
+    let help = if tui_state.show_history {
+        Line::from(vec![
+            Span::styled(" ↑↓", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(" naviguer  ", Style::default().fg(Color::White)),
+            Span::styled("Enter", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::styled(" charger  ", Style::default().fg(Color::White)),
+            Span::styled("d", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::styled(" supprimer  ", Style::default().fg(Color::White)),
+            Span::styled("h", Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD)),
+            Span::styled("/", Style::default().fg(Color::White)),
+            Span::styled("Esc", Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD)),
+            Span::styled(" fermer  ", Style::default().fg(Color::White)),
+            Span::styled("q", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::styled(" quitter", Style::default().fg(Color::White)),
+        ])
+    } else if tui_state.is_editing && tui_state.focused_request_field == RequestField::Headers {
         Line::from(vec![
             Span::styled(" Tab", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
             Span::styled(" cle/valeur  ", Style::default().fg(Color::White)),
@@ -103,6 +124,8 @@ fn draw_help_bar(f: &mut Frame, area: Rect, tui_state: &TuiState) {
             Span::styled(" editer  ", Style::default().fg(Color::White)),
             Span::styled("s", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
             Span::styled(" envoyer  ", Style::default().fg(Color::White)),
+            Span::styled("h", Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD)),
+            Span::styled(" historique  ", Style::default().fg(Color::White)),
             Span::styled("q", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
             Span::styled(" quitter", Style::default().fg(Color::White)),
         ])
@@ -390,6 +413,106 @@ fn draw_response_panel(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiStat
         ]),
     ];
     f.render_widget(Paragraph::new(placeholder), inner);
+}
+
+fn draw_history_panel(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiState) {
+    let is_focused = tui_state.focused_panel == FocusedPanel::Response;
+    let border_style = if is_focused {
+        Style::default().fg(Color::Magenta)
+    } else {
+        Style::default().fg(Color::DarkGray)
+    };
+
+    let count = app.history.entries.len();
+    let title = format!(" Historique [{}] ", count);
+
+    let block = Block::default()
+        .title(title)
+        .borders(Borders::ALL)
+        .border_style(border_style);
+
+    let inner = block.inner(area);
+    f.render_widget(block, area);
+
+    if app.history.entries.is_empty() {
+        let placeholder = vec![
+            Line::from(""),
+            Line::from(Span::styled(
+                "  Aucun historique.",
+                Style::default().fg(Color::DarkGray),
+            )),
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("  Envoyez une requete avec ", Style::default().fg(Color::DarkGray)),
+                Span::styled("s", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+                Span::styled(" pour commencer.", Style::default().fg(Color::DarkGray)),
+            ]),
+        ];
+        f.render_widget(Paragraph::new(placeholder), inner);
+        return;
+    }
+
+    let items: Vec<ListItem> = app
+        .history
+        .entries
+        .iter()
+        .enumerate()
+        .map(|(i, entry)| {
+            let is_selected = i == tui_state.history_index;
+            let method = Method::from_str(&entry.method).unwrap_or(Method::GET);
+            let color = method_color(method);
+
+            let status_span = if let Some(status) = entry.status {
+                let status_color = match status {
+                    200..=299 => Color::Green,
+                    300..=399 => Color::Yellow,
+                    _ => Color::Red,
+                };
+                Span::styled(format!("{}", status), Style::default().fg(status_color))
+            } else {
+                Span::styled("ERR", Style::default().fg(Color::Red))
+            };
+
+            // Tronquer l'URL si trop longue
+            let max_url_len = inner.width.saturating_sub(20) as usize;
+            let url_display = if entry.url.len() > max_url_len {
+                format!("{}...", &entry.url[..max_url_len.saturating_sub(3)])
+            } else {
+                entry.url.clone()
+            };
+
+            // Extraire l'heure du timestamp
+            let time = entry.timestamp
+                .split('T')
+                .nth(1)
+                .and_then(|t| t.get(..5))
+                .unwrap_or("");
+
+            let style = if is_selected {
+                Style::default().bg(Color::DarkGray)
+            } else {
+                Style::default()
+            };
+
+            let marker = if is_selected { "▸ " } else { "  " };
+
+            ListItem::new(Line::from(vec![
+                Span::styled(marker, Style::default().fg(Color::Magenta)),
+                Span::styled(
+                    format!("{:>6} ", entry.method),
+                    Style::default().fg(Color::Black).bg(color).add_modifier(Modifier::BOLD),
+                ),
+                Span::raw(" "),
+                Span::styled(url_display, Style::default().fg(Color::White)),
+                Span::styled(" — ", Style::default().fg(Color::DarkGray)),
+                status_span,
+                Span::styled(format!("  {}", time), Style::default().fg(Color::DarkGray)),
+            ])).style(style)
+        })
+        .collect();
+
+    let widget = List::new(items);
+    f.render_widget(widget, inner);
 }
 
 fn draw_response_content(
