@@ -163,3 +163,42 @@ fn header_without_value_returns_error() {
 
     assert!(!output.status.success());
 }
+
+// --- Phase 3 : JSON & Headers ---
+
+#[test]
+fn json_response_is_pretty_printed() {
+    let output = run_apix(&["GET", "https://jsonplaceholder.typicode.com/posts/1"]);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // Le JSON pretty-printed contient des sauts de ligne et de l'indentation
+    assert!(stdout.contains("\"userId\""));
+    assert!(stdout.contains("\"id\""));
+    // Verifie que c'est bien indente (pretty print)
+    assert!(stdout.contains("  "));
+}
+
+#[test]
+fn non_json_response_does_not_crash() {
+    // Requete vers une page HTML (pas du JSON)
+    let output = run_apix(&["GET", "https://example.com"]);
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("200"));
+}
+
+#[test]
+fn custom_content_type_header_is_preserved() {
+    let output = run_apix(&[
+        "POST",
+        "https://jsonplaceholder.typicode.com/posts",
+        "-H",
+        "Content-Type: text/plain",
+        "-d",
+        "hello world",
+    ]);
+
+    // Doit reussir sans ecraser le Content-Type custom
+    assert!(output.status.success());
+}

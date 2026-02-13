@@ -88,7 +88,21 @@ fn handle_navigation(app: &mut App, tui_state: &mut TuiState, code: KeyCode) -> 
                             app.current_request.body.clone().unwrap_or_default();
                         tui_state.body_cursor = tui_state.body_input.len();
                     }
-                    RequestField::Headers => {}
+                    RequestField::Headers => {
+                        if app.current_request.headers.is_empty() {
+                            // Ajouter un nouveau header et entrer en edition
+                            app.add_header(String::new(), String::new());
+                            tui_state.header_index = 0;
+                        }
+                        // Editer le header selectionne
+                        let (key, value) = &app.current_request.headers[tui_state.header_index];
+                        tui_state.header_key_input = key.clone();
+                        tui_state.header_value_input = value.clone();
+                        tui_state.header_key_cursor = tui_state.header_key_input.len();
+                        tui_state.header_value_cursor = tui_state.header_value_input.len();
+                        tui_state.editing_header_key = true;
+                        tui_state.is_editing = true;
+                    }
                 }
             }
             AppEvent::None
@@ -102,11 +116,72 @@ fn handle_navigation(app: &mut App, tui_state: &mut TuiState, code: KeyCode) -> 
             }
         }
 
+        // Headers : ajouter
+        KeyCode::Char('a') => {
+            if tui_state.focused_panel == FocusedPanel::Request
+                && tui_state.focused_request_field == RequestField::Headers
+            {
+                app.add_header(String::new(), String::new());
+                tui_state.header_index = app.current_request.headers.len() - 1;
+                tui_state.header_key_input.clear();
+                tui_state.header_value_input.clear();
+                tui_state.header_key_cursor = 0;
+                tui_state.header_value_cursor = 0;
+                tui_state.editing_header_key = true;
+                tui_state.is_editing = true;
+            }
+            AppEvent::None
+        }
+
+        // Headers : supprimer
+        KeyCode::Char('d') => {
+            if tui_state.focused_panel == FocusedPanel::Request
+                && tui_state.focused_request_field == RequestField::Headers
+                && !app.current_request.headers.is_empty()
+            {
+                app.remove_header(tui_state.header_index);
+                if tui_state.header_index > 0
+                    && tui_state.header_index >= app.current_request.headers.len()
+                {
+                    tui_state.header_index -= 1;
+                }
+            }
+            AppEvent::None
+        }
+
+        // Headers : naviguer entre headers
+        KeyCode::Left => {
+            if tui_state.focused_panel == FocusedPanel::Request
+                && tui_state.focused_request_field == RequestField::Headers
+                && !app.current_request.headers.is_empty()
+            {
+                tui_state.header_index = tui_state.header_index.saturating_sub(1);
+            }
+            AppEvent::None
+        }
+
+        KeyCode::Right => {
+            if tui_state.focused_panel == FocusedPanel::Request
+                && tui_state.focused_request_field == RequestField::Headers
+                && !app.current_request.headers.is_empty()
+            {
+                let max = app.current_request.headers.len() - 1;
+                if tui_state.header_index < max {
+                    tui_state.header_index += 1;
+                }
+            }
+            AppEvent::None
+        }
+
         _ => AppEvent::None,
     }
 }
 
 fn handle_editing(app: &mut App, tui_state: &mut TuiState, code: KeyCode) -> AppEvent {
+    if tui_state.focused_request_field == RequestField::Headers {
+        return handle_header_editing(app, tui_state, code);
+    }
+
     match code {
         KeyCode::Esc => {
             tui_state.is_editing = false;
@@ -181,6 +256,95 @@ fn handle_editing(app: &mut App, tui_state: &mut TuiState, code: KeyCode) -> App
             }
             _ => {}
         },
+
+        _ => {}
+    }
+    AppEvent::None
+}
+
+fn handle_header_editing(app: &mut App, tui_state: &mut TuiState, code: KeyCode) -> AppEvent {
+    match code {
+        KeyCode::Esc => {
+            // Annuler : si le header est vide (cle et valeur vides), le supprimer
+            let key = tui_state.header_key_input.trim();
+            let value = tui_state.header_value_input.trim();
+            if key.is_empty() && value.is_empty() {
+                app.remove_header(tui_state.header_index);
+                if tui_state.header_index > 0
+                    && tui_state.header_index >= app.current_request.headers.len()
+                {
+                    tui_state.header_index = tui_state.header_index.saturating_sub(1);
+                }
+            }
+            tui_state.is_editing = false;
+        }
+
+        KeyCode::Enter => {
+            // Valider : sauvegarder le header
+            let key = tui_state.header_key_input.trim().to_string();
+            let value = tui_state.header_value_input.trim().to_string();
+            if key.is_empty() {
+                // Cle vide → supprimer le header
+                app.remove_header(tui_state.header_index);
+                if tui_state.header_index > 0
+                    && tui_state.header_index >= app.current_request.headers.len()
+                {
+                    tui_state.header_index = tui_state.header_index.saturating_sub(1);
+                }
+            } else {
+                app.set_header(tui_state.header_index, key, value);
+            }
+            tui_state.is_editing = false;
+        }
+
+        KeyCode::Tab => {
+            // Basculer entre cle et valeur
+            tui_state.editing_header_key = !tui_state.editing_header_key;
+        }
+
+        KeyCode::Char(c) => {
+            if tui_state.editing_header_key {
+                tui_state.header_key_input.insert(tui_state.header_key_cursor, c);
+                tui_state.header_key_cursor += 1;
+            } else {
+                tui_state.header_value_input.insert(tui_state.header_value_cursor, c);
+                tui_state.header_value_cursor += 1;
+            }
+        }
+
+        KeyCode::Backspace => {
+            if tui_state.editing_header_key {
+                if tui_state.header_key_cursor > 0 {
+                    tui_state.header_key_input.remove(tui_state.header_key_cursor - 1);
+                    tui_state.header_key_cursor -= 1;
+                }
+            } else {
+                if tui_state.header_value_cursor > 0 {
+                    tui_state.header_value_input.remove(tui_state.header_value_cursor - 1);
+                    tui_state.header_value_cursor -= 1;
+                }
+            }
+        }
+
+        KeyCode::Left => {
+            if tui_state.editing_header_key {
+                tui_state.header_key_cursor = tui_state.header_key_cursor.saturating_sub(1);
+            } else {
+                tui_state.header_value_cursor = tui_state.header_value_cursor.saturating_sub(1);
+            }
+        }
+
+        KeyCode::Right => {
+            if tui_state.editing_header_key {
+                if tui_state.header_key_cursor < tui_state.header_key_input.len() {
+                    tui_state.header_key_cursor += 1;
+                }
+            } else {
+                if tui_state.header_value_cursor < tui_state.header_value_input.len() {
+                    tui_state.header_value_cursor += 1;
+                }
+            }
+        }
 
         _ => {}
     }

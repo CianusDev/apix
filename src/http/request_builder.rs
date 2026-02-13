@@ -31,7 +31,12 @@ impl<'a> RequestBuilder<'a> {
         let response = req_builder.send().await?;
         let status = response.status().as_u16();
         let headers = response.headers().clone();
-        let body = response.json::<serde_json::Value>().await?;
+        let raw_body = response.text().await?;
+
+        let body = match serde_json::from_str::<serde_json::Value>(&raw_body) {
+            Ok(json) => json,
+            Err(_) => serde_json::Value::String(raw_body),
+        };
 
         Ok(Response::new(status, headers, body))
     }

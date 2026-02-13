@@ -45,6 +45,22 @@ impl App {
         self.current_request.body = body;
     }
 
+    pub fn add_header(&mut self, key: String, value: String) {
+        self.current_request.headers.push((key, value));
+    }
+
+    pub fn set_header(&mut self, index: usize, key: String, value: String) {
+        if index < self.current_request.headers.len() {
+            self.current_request.headers[index] = (key, value);
+        }
+    }
+
+    pub fn remove_header(&mut self, index: usize) {
+        if index < self.current_request.headers.len() {
+            self.current_request.headers.remove(index);
+        }
+    }
+
     pub fn start_loading(&mut self) {
         self.is_loading = true;
         self.error_message = None;
@@ -61,5 +77,56 @@ impl App {
                 self.error_message = Some(e.to_string());
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_app() -> App {
+        App::new().unwrap()
+    }
+
+    #[test]
+    fn add_header() {
+        let mut app = test_app();
+        app.add_header("Accept".into(), "application/json".into());
+        assert_eq!(app.current_request.headers.len(), 1);
+        assert_eq!(app.current_request.headers[0].0, "Accept");
+        assert_eq!(app.current_request.headers[0].1, "application/json");
+    }
+
+    #[test]
+    fn set_header_updates_existing() {
+        let mut app = test_app();
+        app.add_header("Accept".into(), "text/html".into());
+        app.set_header(0, "Accept".into(), "application/json".into());
+        assert_eq!(app.current_request.headers.len(), 1);
+        assert_eq!(app.current_request.headers[0].1, "application/json");
+    }
+
+    #[test]
+    fn set_header_out_of_bounds_does_nothing() {
+        let mut app = test_app();
+        app.set_header(5, "X-Key".into(), "val".into());
+        assert!(app.current_request.headers.is_empty());
+    }
+
+    #[test]
+    fn remove_header() {
+        let mut app = test_app();
+        app.add_header("A".into(), "1".into());
+        app.add_header("B".into(), "2".into());
+        app.remove_header(0);
+        assert_eq!(app.current_request.headers.len(), 1);
+        assert_eq!(app.current_request.headers[0].0, "B");
+    }
+
+    #[test]
+    fn remove_header_out_of_bounds_does_nothing() {
+        let mut app = test_app();
+        app.remove_header(0);
+        assert!(app.current_request.headers.is_empty());
     }
 }

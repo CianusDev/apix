@@ -22,6 +22,13 @@ pub struct TuiState {
     pub body_cursor: usize,
     pub response_scroll: usize,
     pub is_editing: bool,
+    // Header editing
+    pub header_index: usize,
+    pub header_key_input: String,
+    pub header_value_input: String,
+    pub header_key_cursor: usize,
+    pub header_value_cursor: usize,
+    pub editing_header_key: bool, // true = editing key, false = editing value
 }
 
 impl TuiState {
@@ -35,6 +42,12 @@ impl TuiState {
             body_cursor: 0,
             response_scroll: 0,
             is_editing: false,
+            header_index: 0,
+            header_key_input: String::new(),
+            header_value_input: String::new(),
+            header_key_cursor: 0,
+            header_value_cursor: 0,
+            editing_header_key: true,
         }
     }
 
