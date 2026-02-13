@@ -4,7 +4,7 @@ use std::time::Duration;
 use crate::app::App;
 use crate::models::Method;
 
-use super::state::{FocusedPanel, RequestField, TuiState};
+use super::state::{CollectionsView, FocusedPanel, RequestField, TuiState};
 
 pub enum AppEvent {
     SendRequest,
@@ -40,12 +40,30 @@ fn handle_navigation(app: &mut App, tui_state: &mut TuiState, code: KeyCode) -> 
         return handle_history_navigation(app, tui_state, code);
     }
 
+    // Mode collections : gestion separee
+    if tui_state.show_collections {
+        if tui_state.editing_collection_name {
+            return handle_collection_name_editing(app, tui_state, code);
+        }
+        return handle_collections_navigation(app, tui_state, code);
+    }
+
     match code {
         KeyCode::Char('q') => AppEvent::Quit,
 
         KeyCode::Char('h') => {
             tui_state.show_history = true;
+            tui_state.show_collections = false;
             tui_state.history_index = 0;
+            tui_state.focused_panel = FocusedPanel::Response;
+            AppEvent::None
+        }
+
+        KeyCode::Char('c') => {
+            tui_state.show_collections = true;
+            tui_state.show_history = false;
+            tui_state.collections_view = CollectionsView::CollectionList;
+            tui_state.collection_index = 0;
             tui_state.focused_panel = FocusedPanel::Response;
             AppEvent::None
         }
@@ -329,6 +347,205 @@ fn handle_history_navigation(app: &mut App, tui_state: &mut TuiState, code: KeyC
 
         _ => AppEvent::None,
     }
+}
+
+fn handle_collections_navigation(app: &mut App, tui_state: &mut TuiState, code: KeyCode) -> AppEvent {
+    match tui_state.collections_view {
+        CollectionsView::CollectionList => match code {
+            KeyCode::Char('q') => AppEvent::Quit,
+
+            KeyCode::Esc | KeyCode::Char('c') => {
+                tui_state.show_collections = false;
+                AppEvent::None
+            }
+
+            KeyCode::Up => {
+                tui_state.collection_index = tui_state.collection_index.saturating_sub(1);
+                AppEvent::None
+            }
+
+            KeyCode::Down => {
+                if !app.collections.items.is_empty() {
+                    let max = app.collections.items.len() - 1;
+                    if tui_state.collection_index < max {
+                        tui_state.collection_index += 1;
+                    }
+                }
+                AppEvent::None
+            }
+
+            KeyCode::Enter => {
+                if !app.collections.items.is_empty() {
+                    tui_state.collections_view = CollectionsView::RequestList;
+                    tui_state.collection_request_index = 0;
+                }
+                AppEvent::None
+            }
+
+            KeyCode::Char('n') => {
+                tui_state.editing_collection_name = true;
+                tui_state.collection_name_input.clear();
+                tui_state.collection_name_cursor = 0;
+                AppEvent::None
+            }
+
+            KeyCode::Char('d') => {
+                if !app.collections.items.is_empty() {
+                    app.collections.remove_collection(tui_state.collection_index);
+                    app.save_collections();
+                    if tui_state.collection_index > 0
+                        && tui_state.collection_index >= app.collections.items.len()
+                    {
+                        tui_state.collection_index -= 1;
+                    }
+                }
+                AppEvent::None
+            }
+
+            KeyCode::Tab => {
+                tui_state.focused_panel = match tui_state.focused_panel {
+                    FocusedPanel::Request => FocusedPanel::Response,
+                    FocusedPanel::Response => FocusedPanel::Request,
+                };
+                AppEvent::None
+            }
+
+            _ => AppEvent::None,
+        },
+
+        CollectionsView::RequestList => match code {
+            KeyCode::Char('q') => AppEvent::Quit,
+
+            KeyCode::Esc => {
+                tui_state.collections_view = CollectionsView::CollectionList;
+                AppEvent::None
+            }
+
+            KeyCode::Up => {
+                tui_state.collection_request_index =
+                    tui_state.collection_request_index.saturating_sub(1);
+                AppEvent::None
+            }
+
+            KeyCode::Down => {
+                if let Some(col) = app.collections.items.get(tui_state.collection_index) {
+                    if !col.entries.is_empty() {
+                        let max = col.entries.len() - 1;
+                        if tui_state.collection_request_index < max {
+                            tui_state.collection_request_index += 1;
+                        }
+                    }
+                }
+                AppEvent::None
+            }
+
+            KeyCode::Enter => {
+                app.load_collection_entry(
+                    tui_state.collection_index,
+                    tui_state.collection_request_index,
+                );
+                tui_state.show_collections = false;
+                tui_state.response_scroll = 0;
+                AppEvent::None
+            }
+
+            KeyCode::Char('a') => {
+                // Ajouter la requete courante a la collection
+                if !app.current_request.url.is_empty() {
+                    let name = format!(
+                        "{} {}",
+                        app.current_request.method, app.current_request.url
+                    );
+                    app.add_request_to_collection(tui_state.collection_index, name);
+                }
+                AppEvent::None
+            }
+
+            KeyCode::Char('d') => {
+                let should_adjust = if let Some(col) = app.collections.items.get_mut(tui_state.collection_index) {
+                    if !col.entries.is_empty() {
+                        col.remove_entry(tui_state.collection_request_index);
+                        let adjust = tui_state.collection_request_index > 0
+                            && tui_state.collection_request_index >= col.entries.len();
+                        Some(adjust)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
+                if let Some(adjust) = should_adjust {
+                    app.save_collections();
+                    if adjust {
+                        tui_state.collection_request_index -= 1;
+                    }
+                }
+                AppEvent::None
+            }
+
+            KeyCode::Tab => {
+                tui_state.focused_panel = match tui_state.focused_panel {
+                    FocusedPanel::Request => FocusedPanel::Response,
+                    FocusedPanel::Response => FocusedPanel::Request,
+                };
+                AppEvent::None
+            }
+
+            _ => AppEvent::None,
+        },
+    }
+}
+
+fn handle_collection_name_editing(
+    app: &mut App,
+    tui_state: &mut TuiState,
+    code: KeyCode,
+) -> AppEvent {
+    match code {
+        KeyCode::Esc => {
+            tui_state.editing_collection_name = false;
+        }
+
+        KeyCode::Enter => {
+            let name = tui_state.collection_name_input.trim().to_string();
+            if !name.is_empty() {
+                app.collections.add_collection(name);
+                app.save_collections();
+                tui_state.collection_index = app.collections.items.len() - 1;
+            }
+            tui_state.editing_collection_name = false;
+        }
+
+        KeyCode::Char(c) => {
+            tui_state
+                .collection_name_input
+                .insert(tui_state.collection_name_cursor, c);
+            tui_state.collection_name_cursor += 1;
+        }
+
+        KeyCode::Backspace => {
+            if tui_state.collection_name_cursor > 0 {
+                tui_state
+                    .collection_name_input
+                    .remove(tui_state.collection_name_cursor - 1);
+                tui_state.collection_name_cursor -= 1;
+            }
+        }
+
+        KeyCode::Left => {
+            tui_state.collection_name_cursor =
+                tui_state.collection_name_cursor.saturating_sub(1);
+        }
+
+        KeyCode::Right => {
+            if tui_state.collection_name_cursor < tui_state.collection_name_input.len() {
+                tui_state.collection_name_cursor += 1;
+            }
+        }
+
+        _ => {}
+    }
+    AppEvent::None
 }
 
 fn handle_header_editing(app: &mut App, tui_state: &mut TuiState, code: KeyCode) -> AppEvent {

@@ -9,7 +9,7 @@ use ratatui::{
 use crate::app::App;
 use crate::models::Method;
 
-use super::state::{FocusedPanel, RequestField, TuiState};
+use super::state::{CollectionsView, FocusedPanel, RequestField, TuiState};
 
 /// Couleur associee a chaque methode HTTP
 fn method_color(method: Method) -> Color {
@@ -42,6 +42,8 @@ pub fn draw(f: &mut Frame, app: &App, tui_state: &TuiState) {
             Span::styled("[LOADING] ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))
         } else if tui_state.show_history {
             Span::styled("[HISTORY] ", Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD))
+        } else if tui_state.show_collections {
+            Span::styled("[COLLECTIONS] ", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
         } else {
             Span::raw("")
         },
@@ -57,6 +59,8 @@ pub fn draw(f: &mut Frame, app: &App, tui_state: &TuiState) {
     draw_request_panel(f, content_chunks[0], app, tui_state);
     if tui_state.show_history {
         draw_history_panel(f, content_chunks[1], app, tui_state);
+    } else if tui_state.show_collections {
+        draw_collections_panel(f, content_chunks[1], app, tui_state);
     } else {
         draw_response_panel(f, content_chunks[1], app, tui_state);
     }
@@ -78,6 +82,46 @@ fn draw_help_bar(f: &mut Frame, area: Rect, tui_state: &TuiState) {
             Span::styled("/", Style::default().fg(Color::White)),
             Span::styled("Esc", Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD)),
             Span::styled(" fermer  ", Style::default().fg(Color::White)),
+            Span::styled("q", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::styled(" quitter", Style::default().fg(Color::White)),
+        ])
+    } else if tui_state.show_collections && tui_state.editing_collection_name {
+        Line::from(vec![
+            Span::styled(" Nom: ", Style::default().fg(Color::White)),
+            Span::styled("Enter", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(" valider  ", Style::default().fg(Color::White)),
+            Span::styled("Esc", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(" annuler", Style::default().fg(Color::White)),
+        ])
+    } else if tui_state.show_collections && tui_state.collections_view == CollectionsView::CollectionList {
+        Line::from(vec![
+            Span::styled(" ↑↓", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(" naviguer  ", Style::default().fg(Color::White)),
+            Span::styled("Enter", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::styled(" ouvrir  ", Style::default().fg(Color::White)),
+            Span::styled("n", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::styled(" nouvelle  ", Style::default().fg(Color::White)),
+            Span::styled("d", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::styled(" supprimer  ", Style::default().fg(Color::White)),
+            Span::styled("c", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled("/", Style::default().fg(Color::White)),
+            Span::styled("Esc", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(" fermer  ", Style::default().fg(Color::White)),
+            Span::styled("q", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::styled(" quitter", Style::default().fg(Color::White)),
+        ])
+    } else if tui_state.show_collections && tui_state.collections_view == CollectionsView::RequestList {
+        Line::from(vec![
+            Span::styled(" ↑↓", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(" naviguer  ", Style::default().fg(Color::White)),
+            Span::styled("Enter", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::styled(" charger  ", Style::default().fg(Color::White)),
+            Span::styled("a", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::styled(" ajouter  ", Style::default().fg(Color::White)),
+            Span::styled("d", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::styled(" supprimer  ", Style::default().fg(Color::White)),
+            Span::styled("Esc", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(" retour  ", Style::default().fg(Color::White)),
             Span::styled("q", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
             Span::styled(" quitter", Style::default().fg(Color::White)),
         ])
@@ -126,6 +170,8 @@ fn draw_help_bar(f: &mut Frame, area: Rect, tui_state: &TuiState) {
             Span::styled(" envoyer  ", Style::default().fg(Color::White)),
             Span::styled("h", Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD)),
             Span::styled(" historique  ", Style::default().fg(Color::White)),
+            Span::styled("c", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(" collections  ", Style::default().fg(Color::White)),
             Span::styled("q", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
             Span::styled(" quitter", Style::default().fg(Color::White)),
         ])
@@ -513,6 +559,169 @@ fn draw_history_panel(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiState
 
     let widget = List::new(items);
     f.render_widget(widget, inner);
+}
+
+fn draw_collections_panel(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiState) {
+    let border_style = Style::default().fg(Color::Cyan);
+
+    let title = match tui_state.collections_view {
+        CollectionsView::CollectionList => {
+            let count = app.collections.items.len();
+            format!(" Collections [{}] ", count)
+        }
+        CollectionsView::RequestList => {
+            if let Some(col) = app.collections.items.get(tui_state.collection_index) {
+                format!(" {} [{}] ", col.name, col.entries.len())
+            } else {
+                " Collection ".to_string()
+            }
+        }
+    };
+
+    let block = Block::default()
+        .title(title)
+        .borders(Borders::ALL)
+        .border_style(border_style);
+
+    let inner = block.inner(area);
+    f.render_widget(block, area);
+
+    // Edition du nom de collection
+    if tui_state.editing_collection_name {
+        let lines = vec![
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("  Nom: ", Style::default().fg(Color::White)),
+                Span::styled(
+                    if tui_state.collection_name_input.is_empty() {
+                        "..."
+                    } else {
+                        &tui_state.collection_name_input
+                    },
+                    Style::default().fg(Color::Yellow).add_modifier(Modifier::UNDERLINED),
+                ),
+            ]),
+        ];
+        f.render_widget(Paragraph::new(lines), inner);
+
+        let cursor_x = inner.x + 7 + tui_state.collection_name_cursor as u16;
+        let cursor_y = inner.y + 1;
+        f.set_cursor_position((cursor_x, cursor_y));
+        return;
+    }
+
+    match tui_state.collections_view {
+        CollectionsView::CollectionList => {
+            if app.collections.items.is_empty() {
+                let placeholder = vec![
+                    Line::from(""),
+                    Line::from(Span::styled(
+                        "  Aucune collection.",
+                        Style::default().fg(Color::DarkGray),
+                    )),
+                    Line::from(""),
+                    Line::from(vec![
+                        Span::styled("  Appuyez sur ", Style::default().fg(Color::DarkGray)),
+                        Span::styled("n", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+                        Span::styled(" pour en creer une.", Style::default().fg(Color::DarkGray)),
+                    ]),
+                ];
+                f.render_widget(Paragraph::new(placeholder), inner);
+                return;
+            }
+
+            let items: Vec<ListItem> = app
+                .collections
+                .items
+                .iter()
+                .enumerate()
+                .map(|(i, col)| {
+                    let is_selected = i == tui_state.collection_index;
+                    let marker = if is_selected { "▸ " } else { "  " };
+                    let style = if is_selected {
+                        Style::default().bg(Color::DarkGray)
+                    } else {
+                        Style::default()
+                    };
+
+                    ListItem::new(Line::from(vec![
+                        Span::styled(marker, Style::default().fg(Color::Cyan)),
+                        Span::styled(&col.name, Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
+                        Span::styled(
+                            format!("  ({} requetes)", col.entries.len()),
+                            Style::default().fg(Color::DarkGray),
+                        ),
+                    ])).style(style)
+                })
+                .collect();
+
+            let widget = List::new(items);
+            f.render_widget(widget, inner);
+        }
+
+        CollectionsView::RequestList => {
+            let col = match app.collections.items.get(tui_state.collection_index) {
+                Some(c) => c,
+                None => return,
+            };
+
+            if col.entries.is_empty() {
+                let placeholder = vec![
+                    Line::from(""),
+                    Line::from(Span::styled(
+                        "  Aucune requete dans cette collection.",
+                        Style::default().fg(Color::DarkGray),
+                    )),
+                    Line::from(""),
+                    Line::from(vec![
+                        Span::styled("  Appuyez sur ", Style::default().fg(Color::DarkGray)),
+                        Span::styled("a", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+                        Span::styled(" pour ajouter la requete courante.", Style::default().fg(Color::DarkGray)),
+                    ]),
+                ];
+                f.render_widget(Paragraph::new(placeholder), inner);
+                return;
+            }
+
+            let items: Vec<ListItem> = col
+                .entries
+                .iter()
+                .enumerate()
+                .map(|(i, entry)| {
+                    let is_selected = i == tui_state.collection_request_index;
+                    let method = Method::from_str(&entry.method).unwrap_or(Method::GET);
+                    let color = method_color(method);
+                    let marker = if is_selected { "▸ " } else { "  " };
+                    let style = if is_selected {
+                        Style::default().bg(Color::DarkGray)
+                    } else {
+                        Style::default()
+                    };
+
+                    // Tronquer l'URL si trop longue
+                    let max_url_len = inner.width.saturating_sub(18) as usize;
+                    let url_display = if entry.url.len() > max_url_len {
+                        format!("{}...", &entry.url[..max_url_len.saturating_sub(3)])
+                    } else {
+                        entry.url.clone()
+                    };
+
+                    ListItem::new(Line::from(vec![
+                        Span::styled(marker, Style::default().fg(Color::Cyan)),
+                        Span::styled(
+                            format!("{:>6} ", entry.method),
+                            Style::default().fg(Color::Black).bg(color).add_modifier(Modifier::BOLD),
+                        ),
+                        Span::raw(" "),
+                        Span::styled(url_display, Style::default().fg(Color::White)),
+                    ])).style(style)
+                })
+                .collect();
+
+            let widget = List::new(items);
+            f.render_widget(widget, inner);
+        }
+    }
 }
 
 fn draw_response_content(

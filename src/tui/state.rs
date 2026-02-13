@@ -12,6 +12,12 @@ pub enum RequestField {
     Body,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum CollectionsView {
+    CollectionList,
+    RequestList,
+}
+
 #[derive(Debug)]
 pub struct TuiState {
     pub focused_panel: FocusedPanel,
@@ -32,6 +38,14 @@ pub struct TuiState {
     // History
     pub show_history: bool,
     pub history_index: usize,
+    // Collections
+    pub show_collections: bool,
+    pub collections_view: CollectionsView,
+    pub collection_index: usize,
+    pub collection_request_index: usize,
+    pub editing_collection_name: bool,
+    pub collection_name_input: String,
+    pub collection_name_cursor: usize,
 }
 
 impl TuiState {
@@ -53,6 +67,13 @@ impl TuiState {
             editing_header_key: true,
             show_history: false,
             history_index: 0,
+            show_collections: false,
+            collections_view: CollectionsView::CollectionList,
+            collection_index: 0,
+            collection_request_index: 0,
+            editing_collection_name: false,
+            collection_name_input: String::new(),
+            collection_name_cursor: 0,
         }
     }
 

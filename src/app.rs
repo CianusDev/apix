@@ -1,7 +1,7 @@
 use crate::config::Settings;
 use crate::errors::Result;
 use crate::http::HttpClient;
-use crate::models::{History, HistoryEntry, Method, Request, Response};
+use crate::models::{CollectionEntry, Collections, History, HistoryEntry, Method, Request, Response};
 
 pub struct App {
     pub settings: Settings,
@@ -11,6 +11,7 @@ pub struct App {
     pub is_loading: bool,
     pub error_message: Option<String>,
     pub history: History,
+    pub collections: Collections,
 }
 
 impl App {
@@ -27,12 +28,14 @@ impl App {
             is_loading: false,
             error_message: None,
             history: History::default(),
+            collections: Collections::default(),
         })
     }
 
     pub fn initialize(&mut self) -> Result<()> {
         self.settings.ensure_dirs()?;
         self.history = History::load(&self.settings.history_file)?;
+        self.collections = Collections::load(&self.settings.collections_file)?;
         Ok(())
     }
 
@@ -100,6 +103,32 @@ impl App {
     pub fn remove_history_entry(&mut self, index: usize) {
         self.history.remove(index);
         let _ = self.history.save(&self.settings.history_file);
+    }
+
+    // --- Collections ---
+
+    pub fn save_collections(&self) {
+        let _ = self.collections.save(&self.settings.collections_file);
+    }
+
+    pub fn add_request_to_collection(&mut self, col_index: usize, name: String) {
+        if let Some(col) = self.collections.items.get_mut(col_index) {
+            let entry = CollectionEntry::from_request(&name, &self.current_request);
+            col.add_entry(entry);
+            self.save_collections();
+        }
+    }
+
+    pub fn load_collection_entry(&mut self, col_index: usize, entry_index: usize) {
+        if let Some(col) = self.collections.items.get(col_index) {
+            if let Some(entry) = col.entries.get(entry_index) {
+                if let Ok(request) = entry.to_request() {
+                    self.current_request = request;
+                    self.current_response = None;
+                    self.error_message = None;
+                }
+            }
+        }
     }
 }
 

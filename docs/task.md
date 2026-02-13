@@ -62,9 +62,10 @@
 
 ## Phase 5 — Collections
 
-- [ ] Creation de collections
-- [ ] Ajout / suppression de requetes dans une collection
-- [ ] Sauvegarde dans `~/.apix/collections.json`
+- [x] Creation de collections (modele Collection/CollectionEntry/Collections + TUI navigation 2 niveaux)
+- [x] Ajout / suppression de requetes dans une collection
+- [x] Sauvegarde dans `~/.apix/collections.json`
+- [x] Panneau TUI collections (touche c, liste collections, liste requetes, edition nom)
 
 ---
 
