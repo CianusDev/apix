@@ -15,6 +15,8 @@ pub struct App {
     pub collections: Collections,
     pub environments: Environments,
     pub active_environment: Option<usize>,
+    /// Message temporaire affiché dans la barre de titre (ex: "Copié !")
+    pub status_notice: Option<(String, std::time::Instant)>,
 }
 
 impl App {
@@ -34,6 +36,7 @@ impl App {
             collections: Collections::default(),
             environments: Environments::default(),
             active_environment: None,
+            status_notice: None,
         })
     }
 
@@ -166,6 +169,45 @@ impl App {
             req.auth = Some(auth.substitute_env(env));
         }
         req
+    }
+
+    /// Retourne le message de notice si moins de 3 secondes se sont écoulées.
+    pub fn status_notice_text(&self) -> Option<&str> {
+        if let Some((msg, instant)) = &self.status_notice {
+            if instant.elapsed().as_secs() < 3 {
+                return Some(msg.as_str());
+            }
+        }
+        None
+    }
+
+    fn set_notice(&mut self, msg: String) {
+        self.status_notice = Some((msg, std::time::Instant::now()));
+    }
+
+    /// Copie le body de la réponse dans le presse-papiers système.
+    pub fn copy_response_to_clipboard(&mut self) {
+        let Some(ref response) = self.current_response else {
+            return;
+        };
+        let text = serde_json::to_string_pretty(&response.body).unwrap_or_default();
+        match arboard::Clipboard::new().and_then(|mut cb| cb.set_text(text)) {
+            Ok(_) => self.set_notice("Copie dans le presse-papiers !".to_string()),
+            Err(e) => self.set_notice(format!("Erreur clipboard: {}", e)),
+        }
+    }
+
+    /// Sauvegarde le body de la réponse dans un fichier JSON dans le répertoire courant.
+    pub fn save_response_to_file(&mut self) {
+        let Some(ref response) = self.current_response else {
+            return;
+        };
+        let text = serde_json::to_string_pretty(&response.body).unwrap_or_default();
+        let filename = "response.json";
+        match std::fs::write(filename, &text) {
+            Ok(_) => self.set_notice(format!("Sauvegarde : {}", filename)),
+            Err(e) => self.set_notice(format!("Erreur : {}", e)),
+        }
     }
 
     pub fn load_collection_entry(&mut self, col_index: usize, entry_index: usize) {

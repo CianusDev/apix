@@ -1,4 +1,4 @@
-use crossterm::event::{self, Event, KeyCode, KeyModifiers};
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 use std::time::Duration;
 
 use crate::app::App;
@@ -26,7 +26,7 @@ pub fn handle_events(
             }
 
             if tui_state.is_editing {
-                return Ok(handle_editing(app, tui_state, key.code));
+                return Ok(handle_editing(app, tui_state, key));
             } else {
                 return Ok(handle_navigation(app, tui_state, key.code));
             }
@@ -138,8 +138,14 @@ fn handle_navigation(app: &mut App, tui_state: &mut TuiState, code: KeyCode) -> 
                     }
                     RequestField::Body => {
                         tui_state.is_editing = true;
+                        let raw = app.current_request.body.clone().unwrap_or_default();
+                        // Auto-formatter si le contenu est du JSON valide
                         tui_state.body_input =
-                            app.current_request.body.clone().unwrap_or_default();
+                            if let Ok(val) = serde_json::from_str::<serde_json::Value>(&raw) {
+                                serde_json::to_string_pretty(&val).unwrap_or(raw)
+                            } else {
+                                raw
+                            };
                         tui_state.body_cursor = tui_state.body_input.len();
                     }
                     RequestField::Auth => {
@@ -210,6 +216,18 @@ fn handle_navigation(app: &mut App, tui_state: &mut TuiState, code: KeyCode) -> 
             }
         }
 
+        // Copier le body dans le presse-papiers
+        KeyCode::Char('y') => {
+            app.copy_response_to_clipboard();
+            AppEvent::None
+        }
+
+        // Sauvegarder le body dans response.json
+        KeyCode::Char('w') => {
+            app.save_response_to_file();
+            AppEvent::None
+        }
+
         // Headers : ajouter
         KeyCode::Char('a') => {
             if tui_state.focused_panel == FocusedPanel::Request
@@ -271,7 +289,9 @@ fn handle_navigation(app: &mut App, tui_state: &mut TuiState, code: KeyCode) -> 
     }
 }
 
-fn handle_editing(app: &mut App, tui_state: &mut TuiState, code: KeyCode) -> AppEvent {
+fn handle_editing(app: &mut App, tui_state: &mut TuiState, key: KeyEvent) -> AppEvent {
+    let code = key.code;
+
     if tui_state.focused_request_field == RequestField::Headers {
         return handle_header_editing(app, tui_state, code);
     }
@@ -279,84 +299,203 @@ fn handle_editing(app: &mut App, tui_state: &mut TuiState, code: KeyCode) -> App
         return handle_auth_editing(app, tui_state, code);
     }
 
+    // ── Body : comportement textarea complet ──────────────────────────────
+    if tui_state.focused_request_field == RequestField::Body {
+        match code {
+            // Esc = valider et sortir
+            KeyCode::Esc => {
+                let body = if tui_state.body_input.is_empty() {
+                    None
+                } else {
+                    Some(tui_state.body_input.clone())
+                };
+                app.set_body(body);
+                tui_state.is_editing = false;
+            }
+
+            // Enter = newline avec auto-indentation
+            KeyCode::Enter => body_insert_newline(tui_state),
+
+            // Tab = 2 espaces
+            KeyCode::Tab => {
+                tui_state.body_input.insert_str(tui_state.body_cursor, "  ");
+                tui_state.body_cursor += 2;
+            }
+
+            // Ctrl+f = formatter le JSON
+            KeyCode::Char('f') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                body_format_json(tui_state);
+            }
+
+            // Navigation verticale
+            KeyCode::Up => body_move_up(tui_state),
+            KeyCode::Down => body_move_down(tui_state),
+
+            // Navigation horizontale
+            KeyCode::Left => {
+                tui_state.body_cursor = tui_state.body_cursor.saturating_sub(1);
+            }
+            KeyCode::Right => {
+                if tui_state.body_cursor < tui_state.body_input.len() {
+                    tui_state.body_cursor += 1;
+                }
+            }
+
+            // Suppression
+            KeyCode::Backspace => {
+                if tui_state.body_cursor > 0 {
+                    tui_state.body_input.remove(tui_state.body_cursor - 1);
+                    tui_state.body_cursor -= 1;
+                }
+            }
+
+            // Saisie de caractère
+            KeyCode::Char(c) => {
+                tui_state.body_input.insert(tui_state.body_cursor, c);
+                tui_state.body_cursor += 1;
+            }
+
+            _ => {}
+        }
+        return AppEvent::None;
+    }
+
+    // ── URL et autres champs ──────────────────────────────────────────────
     match code {
         KeyCode::Esc => {
             tui_state.is_editing = false;
         }
 
         KeyCode::Enter => {
-            match tui_state.focused_request_field {
-                RequestField::Url => {
-                    app.set_url(tui_state.url_input.clone());
-                }
-                RequestField::Body => {
-                    let body = if tui_state.body_input.is_empty() {
-                        None
-                    } else {
-                        Some(tui_state.body_input.clone())
-                    };
-                    app.set_body(body);
-                }
-                _ => {}
+            if tui_state.focused_request_field == RequestField::Url {
+                app.set_url(tui_state.url_input.clone());
             }
             tui_state.is_editing = false;
         }
 
-        KeyCode::Char(c) => match tui_state.focused_request_field {
-            RequestField::Url => {
+        KeyCode::Char(c) => {
+            if tui_state.focused_request_field == RequestField::Url {
                 tui_state.url_input.insert(tui_state.url_cursor, c);
                 tui_state.url_cursor += 1;
             }
-            RequestField::Body => {
-                tui_state.body_input.insert(tui_state.body_cursor, c);
-                tui_state.body_cursor += 1;
-            }
-            _ => {}
-        },
+        }
 
-        KeyCode::Backspace => match tui_state.focused_request_field {
-            RequestField::Url => {
-                if tui_state.url_cursor > 0 {
-                    tui_state.url_input.remove(tui_state.url_cursor - 1);
-                    tui_state.url_cursor -= 1;
-                }
+        KeyCode::Backspace => {
+            if tui_state.focused_request_field == RequestField::Url && tui_state.url_cursor > 0 {
+                tui_state.url_input.remove(tui_state.url_cursor - 1);
+                tui_state.url_cursor -= 1;
             }
-            RequestField::Body => {
-                if tui_state.body_cursor > 0 {
-                    tui_state.body_input.remove(tui_state.body_cursor - 1);
-                    tui_state.body_cursor -= 1;
-                }
-            }
-            _ => {}
-        },
+        }
 
-        KeyCode::Left => match tui_state.focused_request_field {
-            RequestField::Url => {
+        KeyCode::Left => {
+            if tui_state.focused_request_field == RequestField::Url {
                 tui_state.url_cursor = tui_state.url_cursor.saturating_sub(1);
             }
-            RequestField::Body => {
-                tui_state.body_cursor = tui_state.body_cursor.saturating_sub(1);
-            }
-            _ => {}
-        },
+        }
 
-        KeyCode::Right => match tui_state.focused_request_field {
-            RequestField::Url => {
-                if tui_state.url_cursor < tui_state.url_input.len() {
-                    tui_state.url_cursor += 1;
-                }
+        KeyCode::Right => {
+            if tui_state.focused_request_field == RequestField::Url
+                && tui_state.url_cursor < tui_state.url_input.len()
+            {
+                tui_state.url_cursor += 1;
             }
-            RequestField::Body => {
-                if tui_state.body_cursor < tui_state.body_input.len() {
-                    tui_state.body_cursor += 1;
-                }
-            }
-            _ => {}
-        },
+        }
 
         _ => {}
     }
     AppEvent::None
+}
+
+// ── Helpers textarea body ─────────────────────────────────────────────────
+
+/// Insère un '\n' avec auto-indentation en fonction du contexte JSON.
+fn body_insert_newline(tui_state: &mut TuiState) {
+    let cursor = tui_state.body_cursor;
+    let line_start = tui_state.body_input[..cursor]
+        .rfind('\n')
+        .map(|i| i + 1)
+        .unwrap_or(0);
+    let line_before = &tui_state.body_input[line_start..cursor];
+
+    // Indentation courante
+    let indent: String = line_before.chars().take_while(|c| *c == ' ').collect();
+    // Indentation supplémentaire si la ligne se termine par { ou [
+    let trimmed = line_before.trim_end();
+    let extra = if trimmed.ends_with('{') || trimmed.ends_with('[') {
+        "  "
+    } else {
+        ""
+    };
+    let new_indent = format!("{}{}", indent, extra);
+
+    // Si le caractère juste après le curseur est } ou ], insérer deux lignes
+    let char_after = tui_state.body_input[cursor..].chars().next();
+    let close_block =
+        !extra.is_empty() && (char_after == Some('}') || char_after == Some(']'));
+
+    if close_block {
+        // \n<new_indent>   ← curseur ici
+        // \n<indent>}
+        let insert = format!("\n{}\n{}", new_indent, indent);
+        tui_state.body_input.insert_str(cursor, &insert);
+        tui_state.body_cursor = cursor + 1 + new_indent.len();
+    } else {
+        let insert = format!("\n{}", new_indent);
+        let len = insert.len();
+        tui_state.body_input.insert_str(cursor, &insert);
+        tui_state.body_cursor = cursor + len;
+    }
+}
+
+/// Formate le contenu du body si c'est du JSON valide.
+fn body_format_json(tui_state: &mut TuiState) {
+    if let Ok(value) = serde_json::from_str::<serde_json::Value>(&tui_state.body_input) {
+        if let Ok(pretty) = serde_json::to_string_pretty(&value) {
+            tui_state.body_input = pretty;
+            tui_state.body_cursor = tui_state.body_input.len();
+        }
+    }
+}
+
+/// Déplace le curseur d'une ligne vers le haut en conservant la colonne.
+fn body_move_up(tui_state: &mut TuiState) {
+    let cursor = tui_state.body_cursor;
+    let line_start = tui_state.body_input[..cursor]
+        .rfind('\n')
+        .map(|i| i + 1)
+        .unwrap_or(0);
+    let col = cursor - line_start;
+    if line_start == 0 {
+        tui_state.body_cursor = 0;
+        return;
+    }
+    let prev_end = line_start - 1;
+    let prev_start = tui_state.body_input[..prev_end]
+        .rfind('\n')
+        .map(|i| i + 1)
+        .unwrap_or(0);
+    let prev_len = prev_end - prev_start;
+    tui_state.body_cursor = prev_start + col.min(prev_len);
+}
+
+/// Déplace le curseur d'une ligne vers le bas en conservant la colonne.
+fn body_move_down(tui_state: &mut TuiState) {
+    let cursor = tui_state.body_cursor;
+    let line_start = tui_state.body_input[..cursor]
+        .rfind('\n')
+        .map(|i| i + 1)
+        .unwrap_or(0);
+    let col = cursor - line_start;
+    if let Some(rel) = tui_state.body_input[cursor..].find('\n') {
+        let next_start = cursor + rel + 1;
+        let next_end = tui_state.body_input[next_start..]
+            .find('\n')
+            .map(|i| next_start + i)
+            .unwrap_or(tui_state.body_input.len());
+        let next_len = next_end - next_start;
+        tui_state.body_cursor = next_start + col.min(next_len);
+    }
+    // Pas de ligne suivante : rester en place
 }
 
 fn handle_history_navigation(app: &mut App, tui_state: &mut TuiState, code: KeyCode) -> AppEvent {

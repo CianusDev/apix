@@ -63,6 +63,15 @@ pub fn draw(f: &mut Frame, app: &App, tui_state: &TuiState) {
         } else {
             Span::raw("")
         },
+        // Notice temporaire (clipboard / fichier)
+        if let Some(notice) = app.status_notice_text() {
+            Span::styled(
+                format!("[{}] ", notice),
+                Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+            )
+        } else {
+            Span::raw("")
+        },
     ]);
     f.render_widget(Paragraph::new(title), main_chunks[0]);
 
@@ -214,6 +223,19 @@ fn draw_help_bar(f: &mut Frame, area: Rect, tui_state: &TuiState) {
             Span::styled("Esc", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
             Span::styled(" annuler", Style::default().fg(Color::White)),
         ])
+    } else if tui_state.is_editing && tui_state.focused_request_field == RequestField::Body {
+        Line::from(vec![
+            Span::styled(" Enter", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(" newline  ", Style::default().fg(Color::White)),
+            Span::styled("Tab", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(" indent  ", Style::default().fg(Color::White)),
+            Span::styled("↑↓", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(" lignes  ", Style::default().fg(Color::White)),
+            Span::styled("C-f", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(" format  ", Style::default().fg(Color::White)),
+            Span::styled("Esc", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(" valider", Style::default().fg(Color::White)),
+        ])
     } else if tui_state.is_editing {
         Line::from(vec![
             Span::styled(" Enter", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
@@ -254,6 +276,10 @@ fn draw_help_bar(f: &mut Frame, area: Rect, tui_state: &TuiState) {
             Span::styled(" collections  ", Style::default().fg(Color::White)),
             Span::styled("e", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
             Span::styled(" env  ", Style::default().fg(Color::White)),
+            Span::styled("y", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(" copier  ", Style::default().fg(Color::White)),
+            Span::styled("w", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(" fichier  ", Style::default().fg(Color::White)),
             Span::styled("q", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
             Span::styled(" quitter", Style::default().fg(Color::White)),
         ])
@@ -601,10 +627,29 @@ fn draw_body_field(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiState) {
     f.render_widget(widget, area);
 
     if tui_state.is_editing && active {
-        let inner_width = area.width.saturating_sub(2).max(1);
-        let cursor_x = area.x + 1 + (tui_state.body_cursor as u16 % inner_width);
-        let cursor_y = area.y + 1 + (tui_state.body_cursor as u16 / inner_width);
-        f.set_cursor_position((cursor_x, cursor_y));
+        // Curseur tenant compte des retours à la ligne ET du wrap visuel
+        let inner_width = area.width.saturating_sub(2).max(1) as usize;
+        let mut visual_row = 0usize;
+        let mut visual_col = 0usize;
+        for (i, ch) in tui_state.body_input.char_indices() {
+            if i == tui_state.body_cursor {
+                break;
+            }
+            if ch == '\n' {
+                visual_row += 1;
+                visual_col = 0;
+            } else {
+                visual_col += 1;
+                if visual_col >= inner_width {
+                    visual_row += 1;
+                    visual_col = 0;
+                }
+            }
+        }
+        f.set_cursor_position((
+            area.x + 1 + visual_col as u16,
+            area.y + 1 + visual_row as u16,
+        ));
     }
 }
 
@@ -1169,7 +1214,7 @@ fn draw_response_content(
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(3), // Status + method
-            Constraint::Length(5), // Headers
+            Constraint::Length(7), // Headers
             Constraint::Min(3),   // Body
         ])
         .split(area);
@@ -1204,14 +1249,17 @@ fn draw_response_content(
     let header_items: Vec<ListItem> = response
         .headers
         .iter()
-        .take(3)
+        .take(5)
         .map(|(k, v)| {
+            let is_cookie = k.as_str().eq_ignore_ascii_case("set-cookie");
+            let key_color = if is_cookie { Color::Yellow } else { Color::Cyan };
+            let value_color = if is_cookie { Color::Yellow } else { Color::White };
             ListItem::new(Line::from(vec![
-                Span::styled(format!("  {}", k), Style::default().fg(Color::Cyan)),
+                Span::styled(format!("  {}", k), Style::default().fg(key_color)),
                 Span::styled(": ", Style::default().fg(Color::DarkGray)),
                 Span::styled(
                     v.to_str().unwrap_or("?"),
-                    Style::default().fg(Color::White),
+                    Style::default().fg(value_color),
                 ),
             ]))
         })

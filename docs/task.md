@@ -86,3 +86,12 @@
 - [x] Champ Auth dans la TUI (selecteur type ←→, edition, Tab champs, barre d'aide)
 - [x] Support des variables d'environnement dans l'auth ({{TOKEN}})
 - [x] Auth sauvegardee dans collections et historique
+
+---
+
+## Phase 8 — Cookies
+
+- [x] Activer le cookie store reqwest (feature `cookies` + `cookie_store(true)`)
+- [x] Cookies geres automatiquement entre les requetes d'une session (partage via `Arc` interne du Client)
+- [x] Affichage elargi des headers reponse (5 au lieu de 3)
+- [x] Coloration distincte des headers Set-Cookie (jaune)

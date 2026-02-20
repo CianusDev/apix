@@ -10,7 +10,10 @@ pub struct HttpClient {
 impl HttpClient {
     pub fn new() -> Self {
         Self {
-            client: reqwest::Client::new(),
+            client: reqwest::Client::builder()
+                .cookie_store(true)
+                .build()
+                .expect("Failed to build HTTP client"),
         }
     }
 
