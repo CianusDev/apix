@@ -97,7 +97,17 @@ pub fn draw(f: &mut Frame, app: &App, tui_state: &TuiState) {
 }
 
 fn draw_help_bar(f: &mut Frame, area: Rect, tui_state: &TuiState) {
-    let help = if tui_state.show_history {
+    let help = if tui_state.show_history && tui_state.history_search_active {
+        Line::from(vec![
+            Span::styled(" Tape pour filtrer  ", Style::default().fg(Color::White)),
+            Span::styled("↑↓", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(" naviguer  ", Style::default().fg(Color::White)),
+            Span::styled("Enter", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::styled("/", Style::default().fg(Color::White)),
+            Span::styled("Esc", Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD)),
+            Span::styled(" valider", Style::default().fg(Color::White)),
+        ])
+    } else if tui_state.show_history {
         Line::from(vec![
             Span::styled(" ↑↓", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
             Span::styled(" naviguer  ", Style::default().fg(Color::White)),
@@ -105,8 +115,8 @@ fn draw_help_bar(f: &mut Frame, area: Rect, tui_state: &TuiState) {
             Span::styled(" charger  ", Style::default().fg(Color::White)),
             Span::styled("d", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
             Span::styled(" supprimer  ", Style::default().fg(Color::White)),
-            Span::styled("h", Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD)),
-            Span::styled("/", Style::default().fg(Color::White)),
+            Span::styled("/", Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD)),
+            Span::styled(" chercher  ", Style::default().fg(Color::White)),
             Span::styled("Esc", Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD)),
             Span::styled(" fermer  ", Style::default().fg(Color::White)),
             Span::styled("q", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
@@ -720,8 +730,13 @@ fn draw_history_panel(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiState
         Style::default().fg(Color::DarkGray)
     };
 
-    let count = app.history.entries.len();
-    let title = format!(" Historique [{}] ", count);
+    let filtered = tui_state.history_filtered_indices(&app.history.entries);
+    let total = app.history.entries.len();
+    let title = if tui_state.history_search_input.is_empty() {
+        format!(" Historique [{}] ", total)
+    } else {
+        format!(" Historique [{}/{}] ", filtered.len(), total)
+    };
 
     let block = Block::default()
         .title(title)
@@ -730,6 +745,30 @@ fn draw_history_panel(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiState
 
     let inner = block.inner(area);
     f.render_widget(block, area);
+
+    // Découpage : barre de recherche (1 ligne) + liste
+    let show_search = tui_state.history_search_active || !tui_state.history_search_input.is_empty();
+    let (search_rect, list_rect) = if show_search && inner.height > 1 {
+        (
+            Rect::new(inner.x, inner.y, inner.width, 1),
+            Rect::new(inner.x, inner.y + 1, inner.width, inner.height - 1),
+        )
+    } else {
+        (Rect::new(0, 0, 0, 0), inner)
+    };
+
+    // Barre de recherche
+    if show_search {
+        let cursor_indicator = if tui_state.history_search_active { "█" } else { "" };
+        let search_line = Line::from(vec![
+            Span::styled(" / ", Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                format!("{}{}", tui_state.history_search_input, cursor_indicator),
+                Style::default().fg(Color::White),
+            ),
+        ]);
+        f.render_widget(Paragraph::new(search_line), search_rect);
+    }
 
     if app.history.entries.is_empty() {
         let placeholder = vec![
@@ -745,17 +784,27 @@ fn draw_history_panel(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiState
                 Span::styled(" pour commencer.", Style::default().fg(Color::DarkGray)),
             ]),
         ];
-        f.render_widget(Paragraph::new(placeholder), inner);
+        f.render_widget(Paragraph::new(placeholder), list_rect);
         return;
     }
 
-    let items: Vec<ListItem> = app
-        .history
-        .entries
+    if filtered.is_empty() {
+        f.render_widget(
+            Paragraph::new(Line::from(Span::styled(
+                "  Aucun résultat.",
+                Style::default().fg(Color::DarkGray),
+            ))),
+            list_rect,
+        );
+        return;
+    }
+
+    let items: Vec<ListItem> = filtered
         .iter()
         .enumerate()
-        .map(|(i, entry)| {
-            let is_selected = i == tui_state.history_index;
+        .map(|(display_i, &original_i)| {
+            let entry = &app.history.entries[original_i];
+            let is_selected = display_i == tui_state.history_index;
             let method = Method::from_str(&entry.method).unwrap_or(Method::GET);
             let color = method_color(method);
 
@@ -771,7 +820,7 @@ fn draw_history_panel(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiState
             };
 
             // Tronquer l'URL si trop longue
-            let max_url_len = inner.width.saturating_sub(20) as usize;
+            let max_url_len = list_rect.width.saturating_sub(20) as usize;
             let url_display = if entry.url.len() > max_url_len {
                 format!("{}...", &entry.url[..max_url_len.saturating_sub(3)])
             } else {
@@ -809,7 +858,7 @@ fn draw_history_panel(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiState
         .collect();
 
     let widget = List::new(items);
-    f.render_widget(widget, inner);
+    f.render_widget(widget, list_rect);
 }
 
 fn draw_collections_panel(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiState) {

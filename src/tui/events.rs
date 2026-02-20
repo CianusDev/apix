@@ -499,11 +499,30 @@ fn body_move_down(tui_state: &mut TuiState) {
 }
 
 fn handle_history_navigation(app: &mut App, tui_state: &mut TuiState, code: KeyCode) -> AppEvent {
+    // Mode recherche actif : déléguer la saisie
+    if tui_state.history_search_active {
+        return handle_history_search(tui_state, app, code);
+    }
+
+    let filtered = tui_state.history_filtered_indices(&app.history.entries);
+
     match code {
         KeyCode::Char('q') => AppEvent::Quit,
 
+        // Esc : si filtre actif, le vider ; sinon fermer l'historique
         KeyCode::Esc | KeyCode::Char('h') => {
-            tui_state.show_history = false;
+            if !tui_state.history_search_input.is_empty() {
+                tui_state.history_search_input.clear();
+                tui_state.history_index = 0;
+            } else {
+                tui_state.show_history = false;
+            }
+            AppEvent::None
+        }
+
+        // '/' : activer la recherche
+        KeyCode::Char('/') => {
+            tui_state.history_search_active = true;
             AppEvent::None
         }
 
@@ -513,8 +532,8 @@ fn handle_history_navigation(app: &mut App, tui_state: &mut TuiState, code: KeyC
         }
 
         KeyCode::Down => {
-            if !app.history.entries.is_empty() {
-                let max = app.history.entries.len() - 1;
+            if !filtered.is_empty() {
+                let max = filtered.len() - 1;
                 if tui_state.history_index < max {
                     tui_state.history_index += 1;
                 }
@@ -523,19 +542,22 @@ fn handle_history_navigation(app: &mut App, tui_state: &mut TuiState, code: KeyC
         }
 
         KeyCode::Enter => {
-            if !app.history.entries.is_empty() {
-                app.load_history_entry(tui_state.history_index);
+            if let Some(&original_idx) = filtered.get(tui_state.history_index) {
+                app.load_history_entry(original_idx);
                 tui_state.show_history = false;
+                tui_state.history_search_input.clear();
+                tui_state.history_search_active = false;
                 tui_state.response_scroll = 0;
             }
             AppEvent::None
         }
 
         KeyCode::Char('d') => {
-            if !app.history.entries.is_empty() {
-                app.remove_history_entry(tui_state.history_index);
+            if let Some(&original_idx) = filtered.get(tui_state.history_index) {
+                app.remove_history_entry(original_idx);
+                let new_filtered = tui_state.history_filtered_indices(&app.history.entries);
                 if tui_state.history_index > 0
-                    && tui_state.history_index >= app.history.entries.len()
+                    && tui_state.history_index >= new_filtered.len()
                 {
                     tui_state.history_index -= 1;
                 }
@@ -553,6 +575,40 @@ fn handle_history_navigation(app: &mut App, tui_state: &mut TuiState, code: KeyC
 
         _ => AppEvent::None,
     }
+}
+
+fn handle_history_search(tui_state: &mut TuiState, app: &App, code: KeyCode) -> AppEvent {
+    match code {
+        // Valider / quitter la saisie (garde le filtre)
+        KeyCode::Enter | KeyCode::Esc => {
+            tui_state.history_search_active = false;
+            tui_state.history_index = 0;
+        }
+
+        KeyCode::Backspace => {
+            tui_state.history_search_input.pop();
+            tui_state.history_index = 0;
+        }
+
+        // Navigation pendant la saisie
+        KeyCode::Up => {
+            tui_state.history_index = tui_state.history_index.saturating_sub(1);
+        }
+        KeyCode::Down => {
+            let filtered = tui_state.history_filtered_indices(&app.history.entries);
+            if !filtered.is_empty() && tui_state.history_index < filtered.len() - 1 {
+                tui_state.history_index += 1;
+            }
+        }
+
+        KeyCode::Char(c) => {
+            tui_state.history_search_input.push(c);
+            tui_state.history_index = 0;
+        }
+
+        _ => {}
+    }
+    AppEvent::None
 }
 
 fn handle_collections_navigation(app: &mut App, tui_state: &mut TuiState, code: KeyCode) -> AppEvent {

@@ -45,6 +45,8 @@ pub struct TuiState {
     // History
     pub show_history: bool,
     pub history_index: usize,
+    pub history_search_active: bool,
+    pub history_search_input: String,
     // Collections
     pub show_collections: bool,
     pub collections_view: CollectionsView,
@@ -103,6 +105,8 @@ impl TuiState {
             editing_header_key: true,
             show_history: false,
             history_index: 0,
+            history_search_active: false,
+            history_search_input: String::new(),
             show_collections: false,
             collections_view: CollectionsView::CollectionList,
             collection_index: 0,
@@ -137,6 +141,30 @@ impl TuiState {
             auth_key_value_cursor: 0,
             auth_editing_key_name: true,
         }
+    }
+
+    /// Retourne les indices (dans la liste complète) des entrées d'historique
+    /// qui correspondent à la recherche courante.
+    pub fn history_filtered_indices(
+        &self,
+        entries: &[crate::models::HistoryEntry],
+    ) -> Vec<usize> {
+        if self.history_search_input.is_empty() {
+            return (0..entries.len()).collect();
+        }
+        let q = self.history_search_input.to_lowercase();
+        entries
+            .iter()
+            .enumerate()
+            .filter(|(_, e)| {
+                e.url.to_lowercase().contains(&q)
+                    || e.method.to_lowercase().contains(&q)
+                    || e.status
+                        .map(|s| s.to_string().contains(&q))
+                        .unwrap_or(false)
+            })
+            .map(|(i, _)| i)
+            .collect()
     }
 
     pub fn next_request_field(&mut self) {
