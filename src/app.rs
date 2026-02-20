@@ -128,6 +128,24 @@ impl App {
         }
     }
 
+    // --- Params ---
+
+    pub fn add_param(&mut self, key: String, value: String) {
+        self.current_request.params.push((key, value));
+    }
+
+    pub fn set_param(&mut self, index: usize, key: String, value: String) {
+        if index < self.current_request.params.len() {
+            self.current_request.params[index] = (key, value);
+        }
+    }
+
+    pub fn remove_param(&mut self, index: usize) {
+        if index < self.current_request.params.len() {
+            self.current_request.params.remove(index);
+        }
+    }
+
     // --- Auth ---
 
     pub fn set_auth(&mut self, auth: Option<Auth>) {
@@ -168,6 +186,16 @@ impl App {
         if let Some(auth) = &req.auth {
             req.auth = Some(auth.substitute_env(env));
         }
+        req.params = req
+            .params
+            .iter()
+            .map(|(k, v)| {
+                (
+                    substitute_variables(k, env),
+                    substitute_variables(v, env),
+                )
+            })
+            .collect();
         req
     }
 

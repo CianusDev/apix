@@ -1,0 +1,140 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build · ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux x86_64
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-22.04
+            archive: tar.gz
+
+          # macOS Intel
+          - target: x86_64-apple-darwin
+            os: macos-13
+            archive: tar.gz
+
+          # macOS Apple Silicon
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            archive: tar.gz
+
+          # Windows x86_64
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            archive: zip
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      # Linux: install clipboard + X11 dependencies for arboard crate
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libxcb1-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }}
+
+      # ── Archive (Unix) ──────────────────────────────────────────────────────
+      - name: Package (Unix)
+        if: matrix.archive == 'tar.gz'
+        shell: bash
+        run: |
+          BINARY_PATH="target/${{ matrix.target }}/release/apix"
+          ARCHIVE_NAME="apix-${{ github.ref_name }}-${{ matrix.target }}.tar.gz"
+          tar czf "$ARCHIVE_NAME" -C "target/${{ matrix.target }}/release" apix
+          echo "ARCHIVE=$ARCHIVE_NAME" >> "$GITHUB_ENV"
+
+      # ── Archive (Windows) ───────────────────────────────────────────────────
+      - name: Package (Windows)
+        if: matrix.archive == 'zip'
+        shell: pwsh
+        run: |
+          $archive = "apix-${{ github.ref_name }}-${{ matrix.target }}.zip"
+          Compress-Archive -Path "target/${{ matrix.target }}/release/apix.exe" -DestinationPath $archive
+          "ARCHIVE=$archive" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: apix-${{ matrix.target }}
+          path: ${{ env.ARCHIVE }}
+          retention-days: 1
+
+  # ── Create GitHub Release ──────────────────────────────────────────────────
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: List artifacts
+        run: ls -lh dist/
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*
+          generate_release_notes: true
+          body: |
+            ## Installation
+
+            **Linux / macOS** (méthode rapide) :
+            ```bash
+            curl -fsSL https://raw.githubusercontent.com/CianusDev/apix/main/install.sh | bash
+            ```
+
+            **Ou téléchargez directement le binaire pour votre plateforme ci-dessous.**
+
+            | Plateforme              | Fichier                                          |
+            |-------------------------|--------------------------------------------------|
+            | Linux x86_64            | `apix-${{ github.ref_name }}-x86_64-unknown-linux-gnu.tar.gz` |
+            | macOS Intel             | `apix-${{ github.ref_name }}-x86_64-apple-darwin.tar.gz`      |
+            | macOS Apple Silicon     | `apix-${{ github.ref_name }}-aarch64-apple-darwin.tar.gz`     |
+            | Windows x86_64          | `apix-${{ github.ref_name }}-x86_64-pc-windows-msvc.zip`      |
+
+            Vérifiez l'intégrité avec `SHA256SUMS.txt`.

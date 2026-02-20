@@ -95,3 +95,17 @@
 - [x] Cookies geres automatiquement entre les requetes d'une session (partage via `Arc` interne du Client)
 - [x] Affichage elargi des headers reponse (5 au lieu de 3)
 - [x] Coloration distincte des headers Set-Cookie (jaune)
+
+---
+
+## Phase 9 — Sidebar fixe + Tabs Request/Response
+
+- [x] Layout 3 colonnes : sidebar (24 chars) | request (50%) | response (50%)
+- [x] Sidebar toujours visible avec 3 sections : History / Collections / Environments
+- [x] Section active en hauteur 60%, sections inactives 20% chacune
+- [x] Request panel : tabs Params | Headers | Body | Auth
+- [x] Response panel : tabs Body | Headers (complet avec scroll) | Cookies (parsing Set-Cookie)
+- [x] Navigation : Tab cycle Sidebar → Request → Response, [ et ] pour les tabs
+- [x] Query params (Request.params) avec percent-encoding dans l'URL envoyee
+- [x] Nouvelle methode `m` pour cycler la methode HTTP, `e` pour editer l'URL
+- [x] Copie/sauvegarde reponse : y (presse-papiers) et w (fichier) toujours disponibles

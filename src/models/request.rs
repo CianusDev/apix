@@ -46,6 +46,8 @@ pub struct Request {
     pub body: Option<String>,
     #[serde(default)]
     pub auth: Option<Auth>,
+    #[serde(default)]
+    pub params: Vec<(String, String)>,
 }
 
 impl Request {
@@ -56,6 +58,7 @@ impl Request {
             headers: Vec::new(),
             body: None,
             auth: None,
+            params: Vec::new(),
         }
     }
 }

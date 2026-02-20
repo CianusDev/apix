@@ -5,65 +5,84 @@ pub enum FocusedPanel {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum RequestField {
-    Method,
-    Url,
-    Auth,
+pub enum DrawerPanel {
+    History,
+    Collections,
+    Environments,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum RequestTab {
+    Params,
     Headers,
     Body,
+    Auth,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum CollectionsView {
-    CollectionList,
-    RequestList,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum EnvironmentsView {
-    EnvironmentList,
-    VariableList,
+pub enum ResponseTab {
+    Body,
+    Headers,
+    Cookies,
 }
 
 #[derive(Debug)]
 pub struct TuiState {
     pub focused_panel: FocusedPanel,
-    pub focused_request_field: RequestField,
+    // URL
     pub url_input: String,
     pub url_cursor: usize,
+    pub editing_url: bool,
+    // Tabs
+    pub request_tab: RequestTab,
+    pub response_tab: ResponseTab,
+    // Drawer (None = closed)
+    pub drawer: Option<DrawerPanel>,
+    // History drawer
+    pub history_index: usize,
+    // Collections drawer
+    pub collection_index: usize,
+    pub collection_request_index: usize,
+    pub in_collection_requests: bool,
+    // Environments drawer
+    pub environment_index: usize,
+    pub environment_variable_index: usize,
+    pub in_environment_vars: bool,
+    // Body editing
     pub body_input: String,
     pub body_cursor: usize,
+    pub is_editing_body: bool,
+    // Response scroll
     pub response_scroll: usize,
-    pub is_editing: bool,
+    pub response_headers_scroll: usize,
     // Header editing
     pub header_index: usize,
     pub header_key_input: String,
     pub header_value_input: String,
     pub header_key_cursor: usize,
     pub header_value_cursor: usize,
-    pub editing_header_key: bool, // true = editing key, false = editing value
-    // History
-    pub show_history: bool,
-    pub history_index: usize,
+    pub editing_header_key: bool,
+    pub editing_header: bool,
+    // Param editing (mirrors headers)
+    pub param_index: usize,
+    pub param_key_input: String,
+    pub param_value_input: String,
+    pub param_key_cursor: usize,
+    pub param_value_cursor: usize,
+    pub editing_param_key: bool,
+    pub editing_param: bool,
+    // History search
     pub history_search_active: bool,
     pub history_search_input: String,
-    // Collections
-    pub show_collections: bool,
-    pub collections_view: CollectionsView,
-    pub collection_index: usize,
-    pub collection_request_index: usize,
+    // Collection name editing
     pub editing_collection_name: bool,
     pub collection_name_input: String,
     pub collection_name_cursor: usize,
-    // Environments
-    pub show_environments: bool,
-    pub environments_view: EnvironmentsView,
-    pub environment_index: usize,
-    pub environment_variable_index: usize,
+    // Environment name editing
     pub editing_environment_name: bool,
     pub environment_name_input: String,
     pub environment_name_cursor: usize,
-    // Edition de variable (cle/valeur)
+    // Variable editing (key/value)
     pub editing_variable: bool,
     pub variable_key_input: String,
     pub variable_value_input: String,
@@ -71,6 +90,7 @@ pub struct TuiState {
     pub variable_value_cursor: usize,
     pub editing_variable_key: bool,
     // Auth editing
+    pub editing_auth: bool,
     pub auth_type_index: usize, // 0=None, 1=Bearer, 2=Basic, 3=ApiKey
     pub auth_token_input: String,
     pub auth_token_cursor: usize,
@@ -78,46 +98,55 @@ pub struct TuiState {
     pub auth_password_input: String,
     pub auth_username_cursor: usize,
     pub auth_password_cursor: usize,
-    pub auth_editing_username: bool, // true=username, false=password
+    pub auth_editing_username: bool,
     pub auth_key_name_input: String,
     pub auth_key_value_input: String,
     pub auth_key_name_cursor: usize,
     pub auth_key_value_cursor: usize,
-    pub auth_editing_key_name: bool, // true=header name, false=value
+    pub auth_editing_key_name: bool,
 }
 
 impl TuiState {
     pub fn new() -> Self {
         Self {
             focused_panel: FocusedPanel::Request,
-            focused_request_field: RequestField::Url,
             url_input: String::new(),
             url_cursor: 0,
+            editing_url: false,
+            request_tab: RequestTab::Params,
+            response_tab: ResponseTab::Body,
+            drawer: None,
+            history_index: 0,
+            collection_index: 0,
+            collection_request_index: 0,
+            in_collection_requests: false,
+            environment_index: 0,
+            environment_variable_index: 0,
+            in_environment_vars: false,
             body_input: String::new(),
             body_cursor: 0,
+            is_editing_body: false,
             response_scroll: 0,
-            is_editing: false,
+            response_headers_scroll: 0,
             header_index: 0,
             header_key_input: String::new(),
             header_value_input: String::new(),
             header_key_cursor: 0,
             header_value_cursor: 0,
             editing_header_key: true,
-            show_history: false,
-            history_index: 0,
+            editing_header: false,
+            param_index: 0,
+            param_key_input: String::new(),
+            param_value_input: String::new(),
+            param_key_cursor: 0,
+            param_value_cursor: 0,
+            editing_param_key: true,
+            editing_param: false,
             history_search_active: false,
             history_search_input: String::new(),
-            show_collections: false,
-            collections_view: CollectionsView::CollectionList,
-            collection_index: 0,
-            collection_request_index: 0,
             editing_collection_name: false,
             collection_name_input: String::new(),
             collection_name_cursor: 0,
-            show_environments: false,
-            environments_view: EnvironmentsView::EnvironmentList,
-            environment_index: 0,
-            environment_variable_index: 0,
             editing_environment_name: false,
             environment_name_input: String::new(),
             environment_name_cursor: 0,
@@ -127,6 +156,7 @@ impl TuiState {
             variable_key_cursor: 0,
             variable_value_cursor: 0,
             editing_variable_key: true,
+            editing_auth: false,
             auth_type_index: 0,
             auth_token_input: String::new(),
             auth_token_cursor: 0,
@@ -143,8 +173,62 @@ impl TuiState {
         }
     }
 
-    /// Retourne les indices (dans la liste complète) des entrées d'historique
-    /// qui correspondent à la recherche courante.
+    /// Returns true if any editing mode is active (keyboard input captured).
+    pub fn is_editing(&self) -> bool {
+        self.editing_url
+            || self.is_editing_body
+            || self.editing_header
+            || self.editing_param
+            || self.editing_auth
+            || self.editing_variable
+            || self.editing_collection_name
+            || self.editing_environment_name
+            || self.history_search_active
+    }
+
+    pub fn next_request_tab(&mut self) {
+        self.request_tab = match self.request_tab {
+            RequestTab::Params => RequestTab::Headers,
+            RequestTab::Headers => RequestTab::Body,
+            RequestTab::Body => RequestTab::Auth,
+            RequestTab::Auth => RequestTab::Params,
+        };
+    }
+
+    pub fn prev_request_tab(&mut self) {
+        self.request_tab = match self.request_tab {
+            RequestTab::Params => RequestTab::Auth,
+            RequestTab::Headers => RequestTab::Params,
+            RequestTab::Body => RequestTab::Headers,
+            RequestTab::Auth => RequestTab::Body,
+        };
+    }
+
+    pub fn next_response_tab(&mut self) {
+        self.response_tab = match self.response_tab {
+            ResponseTab::Body => ResponseTab::Headers,
+            ResponseTab::Headers => ResponseTab::Cookies,
+            ResponseTab::Cookies => ResponseTab::Body,
+        };
+    }
+
+    pub fn prev_response_tab(&mut self) {
+        self.response_tab = match self.response_tab {
+            ResponseTab::Body => ResponseTab::Cookies,
+            ResponseTab::Headers => ResponseTab::Body,
+            ResponseTab::Cookies => ResponseTab::Headers,
+        };
+    }
+
+    pub fn scroll_response_up(&mut self) {
+        self.response_scroll = self.response_scroll.saturating_sub(1);
+    }
+
+    pub fn scroll_response_down(&mut self) {
+        self.response_scroll += 1;
+    }
+
+    /// Returns filtered history indices matching current search query.
     pub fn history_filtered_indices(
         &self,
         entries: &[crate::models::HistoryEntry],
@@ -165,33 +249,5 @@ impl TuiState {
             })
             .map(|(i, _)| i)
             .collect()
-    }
-
-    pub fn next_request_field(&mut self) {
-        self.focused_request_field = match self.focused_request_field {
-            RequestField::Method => RequestField::Url,
-            RequestField::Url => RequestField::Auth,
-            RequestField::Auth => RequestField::Headers,
-            RequestField::Headers => RequestField::Body,
-            RequestField::Body => RequestField::Method,
-        };
-    }
-
-    pub fn prev_request_field(&mut self) {
-        self.focused_request_field = match self.focused_request_field {
-            RequestField::Method => RequestField::Body,
-            RequestField::Url => RequestField::Method,
-            RequestField::Auth => RequestField::Url,
-            RequestField::Headers => RequestField::Auth,
-            RequestField::Body => RequestField::Headers,
-        };
-    }
-
-    pub fn scroll_response_up(&mut self) {
-        self.response_scroll = self.response_scroll.saturating_sub(1);
-    }
-
-    pub fn scroll_response_down(&mut self) {
-        self.response_scroll += 1;
     }
 }
