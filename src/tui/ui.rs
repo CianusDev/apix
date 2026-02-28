@@ -394,27 +394,54 @@ fn draw_headers_tab(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiState) 
 }
 
 fn draw_body_tab(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiState) {
-    let (text, style) = if tui_state.is_editing_body {
-        (tui_state.body_input.as_str(), Style::default().fg(Color::White))
+    if tui_state.is_editing_body {
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .title(" Body (editing) ")
+            .border_style(Style::default().fg(Color::Yellow));
+        let is_json =
+            serde_json::from_str::<serde_json::Value>(&tui_state.body_input).is_ok();
+        let lines: Vec<Line> = if is_json {
+            tui_state.body_input.lines().map(colorize_json_line).collect()
+        } else {
+            tui_state
+                .body_input
+                .lines()
+                .map(|l| Line::from(Span::styled(l, Style::default().fg(Color::White))))
+                .collect()
+        };
+        let widget = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
+        f.render_widget(widget, area);
     } else {
         let body = app.current_request.body.as_deref().unwrap_or("");
-        if body.is_empty() {
-            ("{}", Style::default().fg(Color::DarkGray))
-        } else {
-            (body, Style::default().fg(Color::White))
-        }
-    };
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .title(" Body ")
+            .border_style(Style::default().fg(Color::DarkGray));
 
-    let widget = Paragraph::new(text)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(" Body ")
-                .border_style(Style::default().fg(Color::DarkGray)),
-        )
-        .style(style)
-        .wrap(Wrap { trim: false });
-    f.render_widget(widget, area);
+        if body.is_empty() {
+            let widget = Paragraph::new(Span::styled("{}", Style::default().fg(Color::DarkGray)))
+                .block(block);
+            f.render_widget(widget, area);
+        } else {
+            let (display, is_json) =
+                if let Ok(val) = serde_json::from_str::<serde_json::Value>(body) {
+                    (serde_json::to_string_pretty(&val).unwrap_or_else(|_| body.to_string()), true)
+                } else {
+                    (body.to_string(), false)
+                };
+            let lines: Vec<Line> = if is_json {
+                display.lines().map(colorize_json_line).collect()
+            } else {
+                display
+                    .lines()
+                    .map(|l| Line::from(Span::styled(l, Style::default().fg(Color::White))))
+                    .collect()
+            };
+            let widget = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
+            f.render_widget(widget, area);
+        }
+    }
 
     if tui_state.is_editing_body {
         let inner_width = area.width.saturating_sub(2).max(1) as usize;
