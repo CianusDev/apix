@@ -38,11 +38,10 @@ fn validate_url(url: &str) -> Result<()> {
     }
 
     // Verifier qu'il y a un host apres le scheme
-    let after_scheme = if url.starts_with("https://") {
-        &url[8..]
-    } else {
-        &url[7..]
-    };
+    let after_scheme = url
+        .strip_prefix("https://")
+        .or_else(|| url.strip_prefix("http://"))
+        .unwrap_or("");
 
     if after_scheme.is_empty() || after_scheme == "/" {
         return Err(ApixError::InvalidUrl(format!(

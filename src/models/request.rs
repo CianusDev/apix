@@ -4,6 +4,7 @@ use std::fmt;
 use super::auth::Auth;
 use crate::errors::ApixError;
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Method {
     GET,

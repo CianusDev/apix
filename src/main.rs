@@ -19,6 +19,12 @@ async fn main() -> errors::Result<()> {
         return tui::run().await;
     }
 
+    // --version / -V
+    if args[1] == "--version" || args[1] == "-V" {
+        println!("apix {}", env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
+
     if args.len() < 3 {
         eprintln!("Usage: apix <METHOD> <URL> [-H \"key: value\"]... [-d '{{\"json\"}}']");
         eprintln!("   ou: apix  (lancer la TUI)");
@@ -64,7 +70,9 @@ async fn main() -> errors::Result<()> {
     Ok(())
 }
 
-fn parse_options(args: &[String]) -> errors::Result<(Vec<(String, String)>, Option<String>)> {
+type ParsedOptions = (Vec<(String, String)>, Option<String>);
+
+fn parse_options(args: &[String]) -> errors::Result<ParsedOptions> {
     let mut headers = Vec::new();
     let mut body = None;
     let mut i = 0;

@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::models::environment::{substitute_variables, Environment};
 
+#[allow(clippy::enum_variant_names)]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum Auth {
     BearerToken { token: String },
@@ -62,14 +63,6 @@ impl Auth {
         }
     }
 
-    /// Nom du type pour le selecteur TUI
-    pub fn type_name(&self) -> &'static str {
-        match self {
-            Auth::BearerToken { .. } => "Bearer",
-            Auth::BasicAuth { .. } => "Basic",
-            Auth::ApiKey { .. } => "API Key",
-        }
-    }
 }
 
 /// Noms des types d'auth pour le selecteur (index 0 = None)

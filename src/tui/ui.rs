@@ -1070,13 +1070,12 @@ fn draw_drawer_collections(f: &mut Frame, area: Rect, app: &App, tui_state: &Tui
                 .collect();
             f.render_widget(List::new(items), list_rect);
         }
+    } else if app.collections.items.is_empty() {
+        f.render_widget(
+            Paragraph::new(Span::styled(" (empty)  n:new", Style::default().fg(Color::DarkGray))),
+            list_rect,
+        );
     } else {
-        if app.collections.items.is_empty() {
-            f.render_widget(
-                Paragraph::new(Span::styled(" (empty)  n:new", Style::default().fg(Color::DarkGray))),
-                list_rect,
-            );
-        } else {
             let items: Vec<ListItem> = app
                 .collections
                 .items
@@ -1101,7 +1100,6 @@ fn draw_drawer_collections(f: &mut Frame, area: Rect, app: &App, tui_state: &Tui
                 })
                 .collect();
             f.render_widget(List::new(items), list_rect);
-        }
     }
 
     // Help
@@ -1246,13 +1244,12 @@ fn draw_drawer_environments(f: &mut Frame, area: Rect, app: &App, tui_state: &Tu
                 .collect();
             f.render_widget(List::new(items), list_rect);
         }
+    } else if app.environments.items.is_empty() {
+        f.render_widget(
+            Paragraph::new(Span::styled(" (empty)  n:new", Style::default().fg(Color::DarkGray))),
+            list_rect,
+        );
     } else {
-        if app.environments.items.is_empty() {
-            f.render_widget(
-                Paragraph::new(Span::styled(" (empty)  n:new", Style::default().fg(Color::DarkGray))),
-                list_rect,
-            );
-        } else {
             let items: Vec<ListItem> = app
                 .environments
                 .items
@@ -1279,7 +1276,6 @@ fn draw_drawer_environments(f: &mut Frame, area: Rect, app: &App, tui_state: &Tu
                 })
                 .collect();
             f.render_widget(List::new(items), list_rect);
-        }
     }
 
     // Help
@@ -1418,15 +1414,15 @@ fn colorize_json_line<'a>(line: &'a str) -> Line<'a> {
     let indent = &line[..line.len() - trimmed.len()];
     let mut spans: Vec<Span<'a>> = vec![Span::raw(indent)];
 
-    if let Some(colon_pos) = trimmed.find("\": ") {
-        if trimmed.starts_with('"') {
-            let key = &trimmed[..colon_pos + 1];
-            spans.push(Span::styled(key, Style::default().fg(Color::Cyan)));
-            spans.push(Span::styled(": ", Style::default().fg(Color::DarkGray)));
-            let value = &trimmed[colon_pos + 3..];
-            spans.push(colorize_json_value(value));
-            return Line::from(spans);
-        }
+    if let Some(colon_pos) = trimmed.find("\": ")
+        && trimmed.starts_with('"')
+    {
+        let key = &trimmed[..colon_pos + 1];
+        spans.push(Span::styled(key, Style::default().fg(Color::Cyan)));
+        spans.push(Span::styled(": ", Style::default().fg(Color::DarkGray)));
+        let value = &trimmed[colon_pos + 3..];
+        spans.push(colorize_json_value(value));
+        return Line::from(spans);
     }
 
     spans.push(colorize_json_value(trimmed));

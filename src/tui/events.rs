@@ -18,18 +18,18 @@ pub fn handle_events(
     tui_state: &mut TuiState,
     timeout: Duration,
 ) -> std::io::Result<AppEvent> {
-    if event::poll(timeout)? {
-        if let Event::Key(key) = event::read()? {
-            // Ctrl+C always quits
-            if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c') {
-                return Ok(AppEvent::Quit);
-            }
+    if event::poll(timeout)?
+        && let Event::Key(key) = event::read()?
+    {
+        // Ctrl+C always quits
+        if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c') {
+            return Ok(AppEvent::Quit);
+        }
 
-            if tui_state.is_editing() {
-                return Ok(handle_editing(app, tui_state, key));
-            } else {
-                return Ok(handle_navigation(app, tui_state, key));
-            }
+        if tui_state.is_editing() {
+            return Ok(handle_editing(app, tui_state, key));
+        } else {
+            return Ok(handle_navigation(app, tui_state, key));
         }
     }
     Ok(AppEvent::None)
@@ -485,10 +485,10 @@ fn handle_drawer_environments(
                     let idx = tui_state.environment_index;
                     if app.active_environment == Some(idx) {
                         app.active_environment = None;
-                    } else if let Some(active) = app.active_environment {
-                        if idx < active {
-                            app.active_environment = Some(active - 1);
-                        }
+                    } else if let Some(active) = app.active_environment
+                        && idx < active
+                    {
+                        app.active_environment = Some(active - 1);
                     }
                     app.environments.remove_environment(idx);
                     app.save_environments();
@@ -659,27 +659,23 @@ fn handle_headers_keys(app: &mut App, tui_state: &mut TuiState, code: KeyCode) -
 }
 
 fn handle_body_keys(app: &mut App, tui_state: &mut TuiState, code: KeyCode) -> AppEvent {
-    match code {
-        KeyCode::Enter => {
-            let raw = app.current_request.body.clone().unwrap_or_default();
-            tui_state.body_input =
-                if let Ok(val) = serde_json::from_str::<serde_json::Value>(&raw) {
-                    serde_json::to_string_pretty(&val).unwrap_or(raw)
-                } else {
-                    raw
-                };
-            tui_state.body_cursor = tui_state.body_input.len();
-            tui_state.is_editing_body = true;
-        }
-        _ => {}
+    if code == KeyCode::Enter {
+        let raw = app.current_request.body.clone().unwrap_or_default();
+        tui_state.body_input =
+            if let Ok(val) = serde_json::from_str::<serde_json::Value>(&raw) {
+                serde_json::to_string_pretty(&val).unwrap_or(raw)
+            } else {
+                raw
+            };
+        tui_state.body_cursor = tui_state.body_input.len();
+        tui_state.is_editing_body = true;
     }
     AppEvent::None
 }
 
 fn handle_auth_keys(app: &mut App, tui_state: &mut TuiState, code: KeyCode) -> AppEvent {
-    match code {
-        KeyCode::Enter => {
-            match &app.current_request.auth {
+    if code == KeyCode::Enter {
+        match &app.current_request.auth {
                 None => {
                     tui_state.auth_type_index = 0;
                 }
@@ -705,9 +701,7 @@ fn handle_auth_keys(app: &mut App, tui_state: &mut TuiState, code: KeyCode) -> A
                     tui_state.auth_editing_key_name = true;
                 }
             }
-            tui_state.editing_auth = true;
-        }
-        _ => {}
+        tui_state.editing_auth = true;
     }
     AppEvent::None
 }
@@ -871,11 +865,11 @@ fn body_insert_newline(tui_state: &mut TuiState) {
 }
 
 fn body_format_json(tui_state: &mut TuiState) {
-    if let Ok(value) = serde_json::from_str::<serde_json::Value>(&tui_state.body_input) {
-        if let Ok(pretty) = serde_json::to_string_pretty(&value) {
-            tui_state.body_input = pretty;
-            tui_state.body_cursor = tui_state.body_input.len();
-        }
+    if let Ok(value) = serde_json::from_str::<serde_json::Value>(&tui_state.body_input)
+        && let Ok(pretty) = serde_json::to_string_pretty(&value)
+    {
+        tui_state.body_input = pretty;
+        tui_state.body_cursor = tui_state.body_input.len();
     }
 }
 

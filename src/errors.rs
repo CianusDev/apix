@@ -25,7 +25,7 @@ pub type Result<T> = std::result::Result<T, ApixError>;
 
 fn friendly_reqwest_error(err: &reqwest::Error) -> String {
     if err.is_connect() {
-        format!("Connexion impossible — verifiez l'URL ou votre reseau")
+        "Connexion impossible — verifiez l'URL ou votre reseau".to_string()
     } else if err.is_timeout() {
         "Timeout — le serveur n'a pas repondu a temps".to_string()
     } else if err.is_redirect() {

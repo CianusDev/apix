@@ -100,12 +100,12 @@ impl App {
     }
 
     pub fn load_history_entry(&mut self, index: usize) {
-        if let Some(entry) = self.history.entries.get(index) {
-            if let Ok(request) = entry.to_request() {
-                self.current_request = request;
-                self.current_response = entry.to_response();
-                self.error_message = None;
-            }
+        if let Some(entry) = self.history.entries.get(index)
+            && let Ok(request) = entry.to_request()
+        {
+            self.current_request = request;
+            self.current_response = entry.to_response();
+            self.error_message = None;
         }
     }
 
@@ -201,10 +201,10 @@ impl App {
 
     /// Retourne le message de notice si moins de 3 secondes se sont écoulées.
     pub fn status_notice_text(&self) -> Option<&str> {
-        if let Some((msg, instant)) = &self.status_notice {
-            if instant.elapsed().as_secs() < 3 {
-                return Some(msg.as_str());
-            }
+        if let Some((msg, instant)) = &self.status_notice
+            && instant.elapsed().as_secs() < 3
+        {
+            return Some(msg.as_str());
         }
         None
     }
@@ -239,14 +239,13 @@ impl App {
     }
 
     pub fn load_collection_entry(&mut self, col_index: usize, entry_index: usize) {
-        if let Some(col) = self.collections.items.get(col_index) {
-            if let Some(entry) = col.entries.get(entry_index) {
-                if let Ok(request) = entry.to_request() {
-                    self.current_request = request;
-                    self.current_response = None;
-                    self.error_message = None;
-                }
-            }
+        if let Some(col) = self.collections.items.get(col_index)
+            && let Some(entry) = col.entries.get(entry_index)
+            && let Ok(request) = entry.to_request()
+        {
+            self.current_request = request;
+            self.current_response = None;
+            self.error_message = None;
         }
     }
 }
