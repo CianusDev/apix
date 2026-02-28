@@ -21,11 +21,6 @@ jobs:
             os: ubuntu-22.04
             archive: tar.gz
 
-          # macOS Intel
-          - target: x86_64-apple-darwin
-            os: macos-13
-            archive: tar.gz
-
           # macOS Apple Silicon
           - target: aarch64-apple-darwin
             os: macos-latest
@@ -133,7 +128,6 @@ jobs:
             | Plateforme              | Fichier                                          |
             |-------------------------|--------------------------------------------------|
             | Linux x86_64            | `apix-${{ github.ref_name }}-x86_64-unknown-linux-gnu.tar.gz` |
-            | macOS Intel             | `apix-${{ github.ref_name }}-x86_64-apple-darwin.tar.gz`      |
             | macOS Apple Silicon     | `apix-${{ github.ref_name }}-aarch64-apple-darwin.tar.gz`     |
             | Windows x86_64          | `apix-${{ github.ref_name }}-x86_64-pc-windows-msvc.zip`      |
 
