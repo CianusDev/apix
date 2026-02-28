@@ -4,6 +4,7 @@ mod errors;
 mod http;
 mod models;
 mod tui;
+mod update;
 
 use app::App;
 use errors::ApixError;
@@ -23,6 +24,13 @@ async fn main() -> errors::Result<()> {
     if args[1] == "--version" || args[1] == "-V" {
         println!("apix {}", env!("CARGO_PKG_VERSION"));
         return Ok(());
+    }
+
+    // update
+    if args[1] == "update" {
+        return update::run_update().await.map_err(|e| {
+            errors::ApixError::ConfigError(e.to_string())
+        });
     }
 
     if args.len() < 3 {
