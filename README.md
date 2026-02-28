@@ -1,59 +1,72 @@
-# Apix — API eXecutor
+<div align="center">
 
-> Alternative légère à Postman, entièrement dans votre terminal.
+# apix
 
-Apix est un client HTTP interactif en TUI (Terminal User Interface) écrit en Rust.
-Envoyez des requêtes, explorez les réponses, gérez vos collections et environnements —
-sans jamais quitter votre terminal.
+**A lightweight Postman alternative for your terminal**
+
+[![Release](https://img.shields.io/github/v/release/CianusDev/apix?style=flat-square)](https://github.com/CianusDev/apix/releases)
+[![License](https://img.shields.io/github/license/CianusDev/apix?style=flat-square)](LICENSE)
+[![Build](https://img.shields.io/github/actions/workflow/status/CianusDev/apix/release.yml?style=flat-square&label=CI)](https://github.com/CianusDev/apix/actions)
 
 ```
-┌─ APIX ──────────────────────────────────────────────────────────────────────┐
-│ POST   https://api.example.com/users                              [ENV:prod] │
-└─────────────────────────────────────────────────────────────────────────────┘
-┌─ Request ────────────────────┐┌─ Response ──────────────────────────────────┐
-│ 1:Params│2:Headers│3:Body│4:Auth ││ ● 200 OK   POST                              │
-│──────────────────────────────││ 1:Body│2:Headers│3:Cookies                    │
-│ ▸ Content-Type: application/ ││──────────────────────────────────────────────│
-│   Authorization: Bearer tok… ││ {                                            │
-│                              ││   "id": 42,                                  │
-│                              ││   "name": "Alice",                           │
-│                              ││   "email": "alice@example.com"               │
-│                              ││ }                                            │
-├──────────────────────────────┴┴─────────────────────────────────────────────┤
-│ h:History  c:Collections  E:Envs  e:URL  m:method  s:send  Tab:panel  q:quit│
+curl -fsSL https://raw.githubusercontent.com/CianusDev/apix/main/install.sh | bash
+```
+
+</div>
+
+---
+
+`apix` is a terminal UI (TUI) HTTP client written in Rust.
+Send requests, inspect responses, manage collections and environments — all without leaving your terminal.
+
+```
+┌─ APIX ─────────────────────────────────────────────────────────────────────┐
+│  POST  https://api.example.com/users                            [ENV:prod] │
+└────────────────────────────────────────────────────────────────────────────┘
+┌─ Request ──────────────────────┐┌─ Response ────────────────────────────────┐
+│ 1:Params│2:Headers│3:Body│4:Auth ││ ● 201 Created   POST                      │
+│────────────────────────────────││ 1:Body│2:Headers│3:Cookies                 │
+│ ▸ Authorization: Bearer tok…  ││──────────────────────────────────────────── │
+│   Content-Type: application/… ││ {                                           │
+│                                ││   "id": 42,                                │
+│                                ││   "name": "Alice",                         │
+│                                ││   "token": "eyJhbGci..."                   │
+│                                ││ }                                           │
+├────────────────────────────────┴┴───────────────────────────────────────────┤
+│ h:History  c:Collections  e:Envs  u:URL  m:method  s:send  Tab:switch  q:quit│
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Installation
 
-### Méthode rapide (Linux & macOS)
+### One-liner (Linux & macOS)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/CianusDev/apix/main/install.sh | bash
 ```
 
-Le script détecte automatiquement votre plateforme, télécharge le bon binaire
-et l'installe dans `~/.local/bin` ou `/usr/local/bin`.
+Auto-detects your platform and installs the binary to `~/.local/bin`.
 
-### Téléchargement manuel
+### Download manually
 
-Téléchargez le binaire pour votre plateforme depuis la
-[page Releases](https://github.com/CianusDev/apix/releases/latest) :
+Grab the latest binary from the [**Releases page**](https://github.com/CianusDev/apix/releases):
 
-| Plateforme          | Fichier                                              |
-|---------------------|------------------------------------------------------|
-| Linux x86_64        | `apix-vX.Y.Z-x86_64-unknown-linux-gnu.tar.gz`       |
-| macOS Intel         | `apix-vX.Y.Z-x86_64-apple-darwin.tar.gz`            |
-| macOS Apple Silicon | `apix-vX.Y.Z-aarch64-apple-darwin.tar.gz`           |
-| Windows x86_64      | `apix-vX.Y.Z-x86_64-pc-windows-msvc.zip`            |
+| Platform            | File                                                       |
+|---------------------|------------------------------------------------------------|
+| Linux x86_64        | `apix-vX.Y.Z-x86_64-unknown-linux-gnu.tar.gz`             |
+| macOS Intel         | `apix-vX.Y.Z-x86_64-apple-darwin.tar.gz`                  |
+| macOS Apple Silicon | `apix-vX.Y.Z-aarch64-apple-darwin.tar.gz`                 |
+| Windows x86_64      | `apix-vX.Y.Z-x86_64-pc-windows-msvc.zip`                  |
 
 ```bash
-# Exemple Linux
-tar xzf apix-vX.Y.Z-x86_64-unknown-linux-gnu.tar.gz
+# Extract and install (Linux/macOS)
+tar xzf apix-*.tar.gz
 mv apix ~/.local/bin/
 ```
 
-### Depuis les sources (Rust requis)
+### Build from source
+
+Requires [Rust](https://rustup.rs) (edition 2024):
 
 ```bash
 git clone https://github.com/CianusDev/apix.git
@@ -62,169 +75,115 @@ cargo build --release
 ./target/release/apix
 ```
 
-Ou directement via Cargo :
+## Features
 
-```bash
-cargo install --git https://github.com/CianusDev/apix
-```
+- **Full HTTP support** — GET, POST, PUT, DELETE, PATCH
+- **Persistent URL bar** with color-coded method badge
+- **Query params** — inline key=value editor
+- **Headers** — add, edit, delete
+- **Body editor** — multi-line with auto-indent and JSON formatting (`Ctrl+f`)
+- **Authentication** — Bearer token, Basic Auth, API Key
+- **Environments** — define variables like `{{base_url}}` and switch between `dev` / `prod`
+- **Collections** — save and reload requests
+- **History** — full request log with search
+- **JSON response** — syntax-highlighted body, headers, cookies tabs
+- **Clipboard** — copy response body with `y`
+- **Persistent cookies** — shared across requests in the same session
 
-> **Rust 2024 edition** requis. Installez via [rustup.rs](https://rustup.rs).
+## Keybindings
 
----
+### Global
 
-## Utilisation
+| Key         | Action                         |
+|-------------|--------------------------------|
+| `s`         | Send request                   |
+| `u`         | Edit URL                       |
+| `m`         | Cycle method (GET→POST→…)      |
+| `Tab`       | Switch focus Request ↔ Response|
+| `h`         | Toggle History drawer          |
+| `c`         | Toggle Collections drawer      |
+| `e`         | Toggle Environments drawer     |
+| `Esc`       | Close drawer / cancel edit     |
+| `q` / Ctrl+C| Quit                           |
 
-Lancez simplement `apix` dans votre terminal pour ouvrir l'interface :
+### Request panel
 
-```bash
-apix
-```
-
----
-
-## Raccourcis clavier
-
-### Globaux (toujours disponibles)
-
-| Touche       | Action                            |
-|--------------|-----------------------------------|
-| `s`          | Envoyer la requête                |
-| `e`          | Éditer l'URL                      |
-| `m`          | Changer la méthode HTTP           |
-| `Tab`        | Basculer Request ↔ Response       |
-| `h`          | Ouvrir/fermer le tiroir Historique|
-| `c`          | Ouvrir/fermer le tiroir Collections|
-| `E` (Maj)   | Ouvrir/fermer le tiroir Environments|
-| `Esc`        | Fermer le tiroir ouvert           |
-| `q` / Ctrl+C | Quitter                           |
-
-### Panneau Request
-
-| Touche    | Action                               |
-|-----------|--------------------------------------|
-| `1`       | Tab Params                           |
-| `2`       | Tab Headers                          |
-| `3`       | Tab Body                             |
-| `4`       | Tab Auth                             |
-| `↑` / `↓` | Naviguer dans la liste              |
-| `Enter`   | Éditer l'item sélectionné            |
-| `a`       | Ajouter un item                      |
-| `d`       | Supprimer l'item sélectionné         |
-
-### Panneau Response
-
-| Touche    | Action                               |
-|-----------|--------------------------------------|
-| `1`       | Tab Body                             |
-| `2`       | Tab Headers                          |
-| `3`       | Tab Cookies                          |
-| `↑` / `↓` | Scroller le contenu                 |
-| `y`       | Copier dans le presse-papiers        |
-| `w`       | Sauvegarder dans un fichier          |
-
-### Tiroir Historique (`h`)
-
-| Touche    | Action                               |
-|-----------|--------------------------------------|
-| `↑` / `↓` | Naviguer                            |
-| `Enter`   | Charger la requête                   |
-| `d`       | Supprimer l'entrée                   |
-| `/`       | Rechercher dans l'historique         |
-| `Esc`     | Fermer le tiroir                     |
-
-### Tiroir Collections (`c`)
-
-| Touche    | Action                               |
-|-----------|--------------------------------------|
-| `↑` / `↓` | Naviguer                            |
-| `Enter`   | Ouvrir / charger une requête         |
-| `n`       | Nouvelle collection                  |
-| `a`       | Sauvegarder la requête courante      |
-| `d`       | Supprimer                            |
-| `Esc`     | Retour / fermer                      |
-
-### Tiroir Environments (`E`)
-
-| Touche    | Action                               |
-|-----------|--------------------------------------|
-| `↑` / `↓` | Naviguer                            |
-| `Enter`   | Activer / désactiver l'environnement |
-| `v`       | Voir les variables                   |
-| `n`       | Nouvel environnement                 |
-| `a`       | Ajouter une variable                 |
-| `d`       | Supprimer                            |
-| `Esc`     | Retour / fermer                      |
-
-### Édition de corps (Body)
-
-| Touche     | Action                          |
+| Key        | Action                          |
 |------------|---------------------------------|
-| `Enter`    | Nouvelle ligne (avec indentation automatique) |
-| `Tab`      | Indenter (2 espaces)            |
-| `Ctrl+f`   | Formater le JSON                |
-| `↑` / `↓`  | Se déplacer ligne par ligne    |
-| `Esc`      | Valider et fermer l'éditeur     |
+| `1`        | Params tab                      |
+| `2`        | Headers tab                     |
+| `3`        | Body tab                        |
+| `4`        | Auth tab                        |
+| `[` / `]`  | Cycle tabs (previous / next)    |
+| `↑` / `↓`  | Navigate list                  |
+| `Enter`    | Edit selected item              |
+| `a`        | Add new item                    |
+| `d`        | Delete selected item            |
 
----
+### Response panel
 
-## Fonctionnalités
+| Key        | Action                          |
+|------------|---------------------------------|
+| `1`        | Body tab                        |
+| `2`        | Headers tab                     |
+| `3`        | Cookies tab                     |
+| `↑` / `↓`  | Scroll                         |
+| `y`        | Copy body to clipboard          |
+| `w`        | Save body to file               |
 
-- **Méthodes HTTP** : GET, POST, PUT, DELETE, PATCH
-- **URL bar persistante** avec badge méthode coloré
-- **Query params** avec édition inline
-- **Headers** personnalisés
-- **Body** avec éditeur multi-ligne et formatage JSON auto
-- **Authentification** : Bearer Token, Basic Auth, API Key
-- **Historique** des requêtes avec recherche
-- **Collections** de requêtes sauvegardées
-- **Environnements** avec variables substituées (`{{VAR}}`)
-- **Réponse** : body JSON colorisé, headers, cookies
-- **Clipboard** : copier la réponse en un raccourci
-- **Cookies** persistants entre les requêtes
+### Body editor
 
----
+| Key     | Action                          |
+|---------|---------------------------------|
+| `Enter` | New line (auto-indent)          |
+| `Tab`   | Insert 2 spaces                 |
+| `Ctrl+f`| Format as JSON                  |
+| `Esc`   | Save and exit editor            |
 
-## Stack technique
+### Drawers (History / Collections / Environments)
 
-| Composant       | Technologie              |
-|-----------------|--------------------------|
-| Langage         | Rust (edition 2024)      |
-| Runtime async   | Tokio                    |
-| Client HTTP     | Reqwest 0.13             |
-| TUI             | Ratatui 0.30 + Crossterm 0.29 |
-| Sérialisation   | Serde / serde_json       |
-| Gestion erreurs | Anyhow / Thiserror       |
-| Stockage        | JSON dans `~/.apix/`     |
+| Key     | Action                                         |
+|---------|------------------------------------------------|
+| `↑` / `↓` | Navigate                                   |
+| `Enter` | Load / open / activate                         |
+| `d`     | Delete                                         |
+| `n`     | New (collection / environment)                 |
+| `v`     | View variables (Environments)                  |
+| `a`     | Add variable / save current request            |
+| `/`     | Search (History only)                          |
+| `Esc`   | Go back / close drawer                         |
 
----
+## Data storage
 
-## Données persistantes
-
-Apix stocke ses données dans `~/.apix/` :
+apix stores everything locally in `~/.apix/`:
 
 ```
 ~/.apix/
-├── history.json       # Historique des requêtes
-├── collections.json   # Collections sauvegardées
-└── environments.json  # Environnements et variables
+├── history.json        # Request history
+├── collections.json    # Saved collections
+└── environments.json   # Environments & variables
 ```
 
----
+## Tech stack
 
-## Contribuer
+| Component    | Library                     |
+|--------------|-----------------------------|
+| Language     | Rust (2024 edition)         |
+| TUI          | Ratatui 0.30 + Crossterm 0.29 |
+| HTTP client  | Reqwest 0.13                |
+| Async        | Tokio                       |
+| Serialization| Serde / serde_json          |
 
-Les contributions sont bienvenues !
+## Contributing
 
 ```bash
-git clone https://github.com/CianusDev/apix.git
-cd apix
-cargo test        # Lancer les tests
-cargo clippy      # Linter
-cargo fmt         # Formater
+cargo test    # run all tests
+cargo clippy  # lint
+cargo fmt     # format
 ```
 
----
+Pull requests welcome.
 
-## Licence
+## License
 
-MIT — voir [LICENSE](LICENSE) pour les détails.
+[MIT](LICENSE)

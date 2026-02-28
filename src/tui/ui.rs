@@ -231,9 +231,9 @@ fn draw_params_tab(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiState) {
 
     let items: Vec<ListItem> = if app.current_request.params.is_empty() && !editing {
         vec![ListItem::new(Line::from(vec![
-            Span::styled("  (aucun param) ", Style::default().fg(Color::DarkGray)),
+            Span::styled("  (no params)", Style::default().fg(Color::DarkGray)),
             if is_focused {
-                Span::styled("  a ajouter", Style::default().fg(Color::DarkGray))
+                Span::styled("  a:add", Style::default().fg(Color::DarkGray))
             } else {
                 Span::raw("")
             },
@@ -315,9 +315,9 @@ fn draw_headers_tab(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiState) 
 
     let items: Vec<ListItem> = if app.current_request.headers.is_empty() && !editing {
         vec![ListItem::new(Line::from(vec![
-            Span::styled("  (aucun header) ", Style::default().fg(Color::DarkGray)),
+            Span::styled("  (no headers)", Style::default().fg(Color::DarkGray)),
             if is_focused {
-                Span::styled("  a ajouter", Style::default().fg(Color::DarkGray))
+                Span::styled("  a:add", Style::default().fg(Color::DarkGray))
             } else {
                 Span::raw("")
             },
@@ -453,9 +453,9 @@ fn draw_auth_tab(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiState) {
     if !tui_state.editing_auth {
         let text = match &app.current_request.auth {
             None => Line::from(vec![
-                Span::styled(" (aucune)  ", Style::default().fg(Color::DarkGray)),
+                Span::styled(" (none)  ", Style::default().fg(Color::DarkGray)),
                 Span::styled("Enter", Style::default().fg(Color::DarkGray)),
-                Span::styled(" pour configurer", Style::default().fg(Color::DarkGray)),
+                Span::styled(" to configure", Style::default().fg(Color::DarkGray)),
             ]),
             Some(auth) => Line::from(vec![Span::styled(
                 format!(" {}", auth.display_summary()),
@@ -480,12 +480,12 @@ fn draw_auth_tab(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiState) {
         0 => {
             if let Some(auth) = &app.current_request.auth {
                 lines.push(Line::from(Span::styled(
-                    format!(" Actuel: {}", auth.display_summary()),
+                    format!(" Current:{}", auth.display_summary()),
                     Style::default().fg(Color::DarkGray),
                 )));
             } else {
                 lines.push(Line::from(Span::styled(
-                    " (aucune auth)",
+                    " (no auth)",
                     Style::default().fg(Color::DarkGray),
                 )));
             }
@@ -540,7 +540,7 @@ fn draw_auth_tab(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiState) {
     }
 
     lines.push(Line::from(Span::styled(
-        " Enter=valider  Esc=annuler  ←→=type  Tab=champ",
+        " Enter=save  Esc=cancel  ←→=type  Tab=field",
         Style::default().fg(Color::DarkGray),
     )));
 
@@ -596,7 +596,7 @@ fn draw_response_panel(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiStat
     if app.is_loading {
         let spinner = Line::from(vec![
             Span::styled("  ● ", Style::default().fg(Color::Yellow)),
-            Span::styled("Envoi en cours...", Style::default().fg(Color::Yellow)),
+            Span::styled("Sending...", Style::default().fg(Color::Yellow)),
         ]);
         f.render_widget(Paragraph::new(spinner), inner);
         return;
@@ -605,7 +605,7 @@ fn draw_response_panel(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiStat
     if let Some(ref error) = app.error_message {
         let error_lines = vec![
             Line::from(Span::styled(
-                "  Erreur",
+                "  Error",
                 Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
             )),
             Line::from(""),
@@ -625,14 +625,14 @@ fn draw_response_panel(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiStat
         let placeholder = vec![
             Line::from(""),
             Line::from(Span::styled(
-                "  Aucune reponse.",
+                "  No response yet.",
                 Style::default().fg(Color::DarkGray),
             )),
             Line::from(""),
             Line::from(vec![
-                Span::styled("  Appuyez sur ", Style::default().fg(Color::DarkGray)),
+                Span::styled("  Press ", Style::default().fg(Color::DarkGray)),
                 Span::styled("s", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
-                Span::styled(" pour envoyer.", Style::default().fg(Color::DarkGray)),
+                Span::styled(" to send the request.", Style::default().fg(Color::DarkGray)),
             ]),
         ];
         f.render_widget(Paragraph::new(placeholder), inner);
@@ -821,7 +821,7 @@ fn draw_response_cookies_tab(
         f.render_widget(block, area);
         f.render_widget(
             Paragraph::new(Span::styled(
-                "  Aucun cookie Set-Cookie dans la reponse.",
+                "  No Set-Cookie headers in this response.",
                 Style::default().fg(Color::DarkGray),
             )),
             inner,
@@ -859,9 +859,9 @@ fn draw_drawer_history(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiStat
     let filtered = tui_state.history_filtered_indices(&app.history.entries);
     let total = app.history.entries.len();
     let title = if tui_state.history_search_input.is_empty() {
-        format!(" HISTORIQUE [{}]  /=recherche ", total)
+        format!(" HISTORY [{}]  /=search ", total)
     } else {
-        format!(" HISTORIQUE [{}/{}]  /=recherche ", filtered.len(), total)
+        format!(" HISTORY [{}/{}]  /=search ", filtered.len(), total)
     };
 
     let block = Block::default()
@@ -902,7 +902,7 @@ fn draw_drawer_history(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiStat
 
     // List
     if filtered.is_empty() {
-        let msg = if app.history.entries.is_empty() { " (vide)" } else { " (aucun résultat)" };
+        let msg = if app.history.entries.is_empty() { " (empty)" } else { " (no results)" };
         f.render_widget(
             Paragraph::new(Span::styled(msg, Style::default().fg(Color::DarkGray))),
             list_rect,
@@ -964,17 +964,17 @@ fn draw_drawer_history(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiStat
     // Help
     let help = Line::from(vec![
         Span::styled(" h", Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD)),
-        Span::styled(":fermer  ", Style::default().fg(Color::DarkGray)),
+        Span::styled(":close  ", Style::default().fg(Color::White)),
         Span::styled("↑↓", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-        Span::styled(":nav  ", Style::default().fg(Color::DarkGray)),
+        Span::styled(":nav  ", Style::default().fg(Color::White)),
         Span::styled("Enter", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
-        Span::styled(":charger  ", Style::default().fg(Color::DarkGray)),
+        Span::styled(":load  ", Style::default().fg(Color::White)),
         Span::styled("d", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
-        Span::styled(":del  ", Style::default().fg(Color::DarkGray)),
+        Span::styled(":del  ", Style::default().fg(Color::White)),
         Span::styled("/", Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD)),
-        Span::styled(":recherche  ", Style::default().fg(Color::DarkGray)),
+        Span::styled(":search  ", Style::default().fg(Color::White)),
         Span::styled("Esc", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-        Span::styled(":fermer", Style::default().fg(Color::DarkGray)),
+        Span::styled(":close", Style::default().fg(Color::White)),
     ]);
     f.render_widget(Paragraph::new(help), help_rect);
 }
@@ -1005,7 +1005,7 @@ fn draw_drawer_collections(f: &mut Frame, area: Rect, app: &App, tui_state: &Tui
     // Editing collection name
     if tui_state.editing_collection_name {
         let line = Line::from(vec![
-            Span::styled("Nom: ", Style::default().fg(Color::White)),
+            Span::styled("Name: ", Style::default().fg(Color::White)),
             Span::styled(
                 if tui_state.collection_name_input.is_empty() {
                     "..."
@@ -1024,7 +1024,7 @@ fn draw_drawer_collections(f: &mut Frame, area: Rect, app: &App, tui_state: &Tui
             Some(c) => c,
             None => {
                 f.render_widget(
-                    Paragraph::new(Span::styled(" (erreur)", Style::default().fg(Color::Red))),
+                    Paragraph::new(Span::styled(" (error)", Style::default().fg(Color::Red))),
                     list_rect,
                 );
                 return;
@@ -1033,7 +1033,7 @@ fn draw_drawer_collections(f: &mut Frame, area: Rect, app: &App, tui_state: &Tui
 
         if col.entries.is_empty() {
             f.render_widget(
-                Paragraph::new(Span::styled(" (vide)", Style::default().fg(Color::DarkGray))),
+                Paragraph::new(Span::styled(" (empty)", Style::default().fg(Color::DarkGray))),
                 list_rect,
             );
         } else {
@@ -1073,7 +1073,7 @@ fn draw_drawer_collections(f: &mut Frame, area: Rect, app: &App, tui_state: &Tui
     } else {
         if app.collections.items.is_empty() {
             f.render_widget(
-                Paragraph::new(Span::styled(" (vide)  n=new", Style::default().fg(Color::DarkGray))),
+                Paragraph::new(Span::styled(" (empty)  n:new", Style::default().fg(Color::DarkGray))),
                 list_rect,
             );
         } else {
@@ -1108,32 +1108,32 @@ fn draw_drawer_collections(f: &mut Frame, area: Rect, app: &App, tui_state: &Tui
     let help = if tui_state.in_collection_requests {
         Line::from(vec![
             Span::styled(" c", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-            Span::styled(":fermer  ", Style::default().fg(Color::DarkGray)),
+            Span::styled(":close  ", Style::default().fg(Color::White)),
             Span::styled("↑↓", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-            Span::styled(":nav  ", Style::default().fg(Color::DarkGray)),
+            Span::styled(":nav  ", Style::default().fg(Color::White)),
             Span::styled("Enter", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
-            Span::styled(":charger  ", Style::default().fg(Color::DarkGray)),
+            Span::styled(":load  ", Style::default().fg(Color::White)),
             Span::styled("a", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
-            Span::styled(":sauv req  ", Style::default().fg(Color::DarkGray)),
+            Span::styled(":save req  ", Style::default().fg(Color::White)),
             Span::styled("d", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
-            Span::styled(":del  ", Style::default().fg(Color::DarkGray)),
+            Span::styled(":del  ", Style::default().fg(Color::White)),
             Span::styled("Esc", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-            Span::styled(":retour", Style::default().fg(Color::DarkGray)),
+            Span::styled(":back", Style::default().fg(Color::White)),
         ])
     } else {
         Line::from(vec![
             Span::styled(" c", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-            Span::styled(":fermer  ", Style::default().fg(Color::DarkGray)),
+            Span::styled(":close  ", Style::default().fg(Color::White)),
             Span::styled("↑↓", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-            Span::styled(":nav  ", Style::default().fg(Color::DarkGray)),
+            Span::styled(":nav  ", Style::default().fg(Color::White)),
             Span::styled("Enter", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
-            Span::styled(":ouvrir  ", Style::default().fg(Color::DarkGray)),
+            Span::styled(":open  ", Style::default().fg(Color::White)),
             Span::styled("n", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
-            Span::styled(":new  ", Style::default().fg(Color::DarkGray)),
+            Span::styled(":new  ", Style::default().fg(Color::White)),
             Span::styled("d", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
-            Span::styled(":del  ", Style::default().fg(Color::DarkGray)),
+            Span::styled(":del  ", Style::default().fg(Color::White)),
             Span::styled("Esc", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-            Span::styled(":fermer", Style::default().fg(Color::DarkGray)),
+            Span::styled(":close", Style::default().fg(Color::White)),
         ])
     };
     f.render_widget(Paragraph::new(help), help_rect);
@@ -1141,7 +1141,7 @@ fn draw_drawer_collections(f: &mut Frame, area: Rect, app: &App, tui_state: &Tui
 
 fn draw_drawer_environments(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiState) {
     let count = app.environments.items.len();
-    let title = format!(" ENVIRONNEMENTS [{}] ", count);
+    let title = format!(" ENVIRONMENTS [{}]", count);
 
     let block = Block::default()
         .title(title)
@@ -1165,7 +1165,7 @@ fn draw_drawer_environments(f: &mut Frame, area: Rect, app: &App, tui_state: &Tu
     // Editing environment name
     if tui_state.editing_environment_name {
         let line = Line::from(vec![
-            Span::styled("Nom: ", Style::default().fg(Color::White)),
+            Span::styled("Name: ", Style::default().fg(Color::White)),
             Span::styled(
                 if tui_state.environment_name_input.is_empty() {
                     "..."
@@ -1218,7 +1218,7 @@ fn draw_drawer_environments(f: &mut Frame, area: Rect, app: &App, tui_state: &Tu
         let keys = env.sorted_keys();
         if keys.is_empty() {
             f.render_widget(
-                Paragraph::new(Span::styled(" (vide)  a=add", Style::default().fg(Color::DarkGray))),
+                Paragraph::new(Span::styled(" (empty)  a:add", Style::default().fg(Color::DarkGray))),
                 list_rect,
             );
         } else {
@@ -1249,7 +1249,7 @@ fn draw_drawer_environments(f: &mut Frame, area: Rect, app: &App, tui_state: &Tu
     } else {
         if app.environments.items.is_empty() {
             f.render_widget(
-                Paragraph::new(Span::styled(" (vide)  n=new", Style::default().fg(Color::DarkGray))),
+                Paragraph::new(Span::styled(" (empty)  n:new", Style::default().fg(Color::DarkGray))),
                 list_rect,
             );
         } else {
@@ -1270,7 +1270,7 @@ fn draw_drawer_environments(f: &mut Frame, area: Rect, app: &App, tui_state: &Tu
                         ),
                         Span::styled(&env.name, Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
                         if is_active_env {
-                            Span::styled(" ★ actif", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD))
+                            Span::styled(" ★ active", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD))
                         } else {
                             Span::raw("")
                         },
@@ -1285,35 +1285,35 @@ fn draw_drawer_environments(f: &mut Frame, area: Rect, app: &App, tui_state: &Tu
     // Help
     let help = if tui_state.in_environment_vars {
         Line::from(vec![
-            Span::styled(" E", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
-            Span::styled(":fermer  ", Style::default().fg(Color::DarkGray)),
+            Span::styled(" e", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::styled(":close  ", Style::default().fg(Color::White)),
             Span::styled("↑↓", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-            Span::styled(":nav  ", Style::default().fg(Color::DarkGray)),
+            Span::styled(":nav  ", Style::default().fg(Color::White)),
             Span::styled("Enter", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
-            Span::styled(":editer  ", Style::default().fg(Color::DarkGray)),
+            Span::styled(":edit  ", Style::default().fg(Color::DarkGray)),
             Span::styled("a", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
             Span::styled(":add  ", Style::default().fg(Color::DarkGray)),
             Span::styled("d", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
-            Span::styled(":del  ", Style::default().fg(Color::DarkGray)),
+            Span::styled(":del  ", Style::default().fg(Color::White)),
             Span::styled("Esc", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-            Span::styled(":retour", Style::default().fg(Color::DarkGray)),
+            Span::styled(":back", Style::default().fg(Color::White)),
         ])
     } else {
         Line::from(vec![
-            Span::styled(" E", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
-            Span::styled(":fermer  ", Style::default().fg(Color::DarkGray)),
+            Span::styled(" e", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::styled(":close  ", Style::default().fg(Color::White)),
             Span::styled("↑↓", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-            Span::styled(":nav  ", Style::default().fg(Color::DarkGray)),
+            Span::styled(":nav  ", Style::default().fg(Color::White)),
             Span::styled("Enter", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
-            Span::styled(":activer  ", Style::default().fg(Color::DarkGray)),
+            Span::styled(":activate  ", Style::default().fg(Color::DarkGray)),
             Span::styled("v", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
             Span::styled(":vars  ", Style::default().fg(Color::DarkGray)),
             Span::styled("n", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
-            Span::styled(":new  ", Style::default().fg(Color::DarkGray)),
+            Span::styled(":new  ", Style::default().fg(Color::White)),
             Span::styled("d", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
-            Span::styled(":del  ", Style::default().fg(Color::DarkGray)),
+            Span::styled(":del  ", Style::default().fg(Color::White)),
             Span::styled("Esc", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-            Span::styled(":fermer", Style::default().fg(Color::DarkGray)),
+            Span::styled(":close", Style::default().fg(Color::White)),
         ])
     };
     f.render_widget(Paragraph::new(help), help_rect);
@@ -1327,9 +1327,9 @@ fn draw_status_bar(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiState) {
         if tui_state.editing_url {
             Line::from(vec![
                 Span::styled(" Enter", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-                Span::styled(":valider  ", Style::default().fg(Color::White)),
+                Span::styled(":confirm  ", Style::default().fg(Color::White)),
                 Span::styled("Esc", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-                Span::styled(":annuler", Style::default().fg(Color::White)),
+                Span::styled(":cancel  URL editing", Style::default().fg(Color::White)),
             ])
         } else if tui_state.is_editing_body {
             Line::from(vec![
@@ -1338,26 +1338,26 @@ fn draw_status_bar(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiState) {
                 Span::styled("Tab", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
                 Span::styled(":indent  ", Style::default().fg(Color::White)),
                 Span::styled("C-f", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-                Span::styled(":format  ", Style::default().fg(Color::White)),
+                Span::styled(":fmt JSON  ", Style::default().fg(Color::White)),
                 Span::styled("Esc", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-                Span::styled(":valider", Style::default().fg(Color::White)),
+                Span::styled(":save & exit", Style::default().fg(Color::White)),
             ])
         } else if tui_state.history_search_active {
             Line::from(vec![
-                Span::styled(" Tape pour filtrer  ", Style::default().fg(Color::White)),
+                Span::styled(" Type to filter  ", Style::default().fg(Color::White)),
                 Span::styled("↑↓", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
                 Span::styled(":nav  ", Style::default().fg(Color::White)),
                 Span::styled("Enter/Esc", Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD)),
-                Span::styled(":valider", Style::default().fg(Color::White)),
+                Span::styled(":done", Style::default().fg(Color::White)),
             ])
         } else {
             Line::from(vec![
                 Span::styled(" Tab", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-                Span::styled(":champ  ", Style::default().fg(Color::White)),
+                Span::styled(":field  ", Style::default().fg(Color::White)),
                 Span::styled("Enter", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-                Span::styled(":valider  ", Style::default().fg(Color::White)),
+                Span::styled(":confirm  ", Style::default().fg(Color::White)),
                 Span::styled("Esc", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-                Span::styled(":annuler", Style::default().fg(Color::White)),
+                Span::styled(":cancel", Style::default().fg(Color::White)),
             ])
         }
     } else {
@@ -1365,7 +1365,7 @@ fn draw_status_bar(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiState) {
             FocusedPanel::Request => match tui_state.request_tab {
                 RequestTab::Params | RequestTab::Headers => "↑↓:nav  Enter:edit  a:add  d:del",
                 RequestTab::Body => "Enter:edit body",
-                RequestTab::Auth => "Enter:configurer",
+                RequestTab::Auth => "Enter:configure",
             },
             FocusedPanel::Response => "↑↓:scroll  y:copy  w:save",
         };
@@ -1387,21 +1387,21 @@ fn draw_status_bar(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiState) {
             Span::styled(":History  ", Style::default().fg(Color::DarkGray)),
             Span::styled("c", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
             Span::styled(":Collections  ", Style::default().fg(Color::DarkGray)),
-            Span::styled("E", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::styled("e", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
             Span::styled(":Envs  ", Style::default().fg(Color::DarkGray)),
-            Span::styled("e", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::styled("u", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
             Span::styled(":URL  ", Style::default().fg(Color::DarkGray)),
             Span::styled("m", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
             Span::styled(":method  ", Style::default().fg(Color::DarkGray)),
             Span::styled("s", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
             Span::styled(":send  ", Style::default().fg(Color::DarkGray)),
             Span::styled("Tab", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-            Span::styled(":basculer  ", Style::default().fg(Color::DarkGray)),
+            Span::styled(":switch  ", Style::default().fg(Color::DarkGray)),
             Span::styled(panel_hint, Style::default().fg(Color::DarkGray)),
             Span::styled(env_text, Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
             Span::styled(loading_text, Style::default().fg(Color::Yellow)),
             Span::styled("  q", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
-            Span::styled(":quitter", Style::default().fg(Color::DarkGray)),
+            Span::styled(":quit", Style::default().fg(Color::DarkGray)),
         ])
     };
 

@@ -70,14 +70,16 @@ fn handle_navigation(app: &mut App, tui_state: &mut TuiState, key: KeyEvent) -> 
             return AppEvent::None;
         }
 
-        // Shift+E → toggle Environments drawer
-        KeyCode::Char('E') => {
-            tui_state.drawer = if tui_state.drawer == Some(DrawerPanel::Environments) {
-                None
-            } else {
-                Some(DrawerPanel::Environments)
-            };
-            return AppEvent::None;
+        // e → toggle Environments drawer
+        KeyCode::Char('e') => {
+            if tui_state.drawer.is_none() || tui_state.drawer == Some(DrawerPanel::Environments) {
+                tui_state.drawer = if tui_state.drawer == Some(DrawerPanel::Environments) {
+                    None
+                } else {
+                    Some(DrawerPanel::Environments)
+                };
+                return AppEvent::None;
+            }
         }
 
         // Esc closes drawer if open
@@ -119,8 +121,8 @@ fn handle_navigation(app: &mut App, tui_state: &mut TuiState, key: KeyEvent) -> 
             }
         }
 
-        // Edit URL (only when drawer closed)
-        KeyCode::Char('e') => {
+        // u → edit URL (only when drawer closed)
+        KeyCode::Char('u') => {
             if tui_state.drawer.is_none() {
                 tui_state.editing_url = true;
                 tui_state.url_input = app.current_request.url.clone();
