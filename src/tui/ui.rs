@@ -908,10 +908,13 @@ fn draw_drawer_history(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiStat
             list_rect,
         );
     } else {
+        let visible_h = list_rect.height as usize;
+        let offset = scroll_offset(tui_state.history_index, visible_h);
         let items: Vec<ListItem> = filtered
             .iter()
             .enumerate()
-            .take(list_rect.height as usize)
+            .skip(offset)
+            .take(visible_h)
             .map(|(display_i, &original_i)| {
                 let entry = &app.history.entries[original_i];
                 let is_selected = display_i == tui_state.history_index;
@@ -1037,11 +1040,14 @@ fn draw_drawer_collections(f: &mut Frame, area: Rect, app: &App, tui_state: &Tui
                 list_rect,
             );
         } else {
+            let visible_h = list_rect.height as usize;
+            let offset = scroll_offset(tui_state.collection_request_index, visible_h);
             let items: Vec<ListItem> = col
                 .entries
                 .iter()
                 .enumerate()
-                .take(list_rect.height as usize)
+                .skip(offset)
+                .take(visible_h)
                 .map(|(i, entry)| {
                     let is_sel = i == tui_state.collection_request_index;
                     let method = Method::from_str(&entry.method).unwrap_or(Method::GET);
@@ -1076,12 +1082,15 @@ fn draw_drawer_collections(f: &mut Frame, area: Rect, app: &App, tui_state: &Tui
             list_rect,
         );
     } else {
+            let visible_h = list_rect.height as usize;
+            let offset = scroll_offset(tui_state.collection_index, visible_h);
             let items: Vec<ListItem> = app
                 .collections
                 .items
                 .iter()
                 .enumerate()
-                .take(list_rect.height as usize)
+                .skip(offset)
+                .take(visible_h)
                 .map(|(i, col)| {
                     let is_sel = i == tui_state.collection_index;
                     let style = if is_sel { Style::default().bg(Color::DarkGray) } else { Style::default() };
@@ -1250,12 +1259,15 @@ fn draw_drawer_environments(f: &mut Frame, area: Rect, app: &App, tui_state: &Tu
             list_rect,
         );
     } else {
+            let visible_h = list_rect.height as usize;
+            let offset = scroll_offset(tui_state.environment_index, visible_h);
             let items: Vec<ListItem> = app
                 .environments
                 .items
                 .iter()
                 .enumerate()
-                .take(list_rect.height as usize)
+                .skip(offset)
+                .take(visible_h)
                 .map(|(i, env)| {
                     let is_sel = i == tui_state.environment_index;
                     let is_active_env = app.active_environment == Some(i);
@@ -1405,6 +1417,17 @@ fn draw_status_bar(f: &mut Frame, area: Rect, app: &App, tui_state: &TuiState) {
         Paragraph::new(help).style(Style::default().bg(Color::DarkGray)),
         area,
     );
+}
+
+// ── Scroll helper ─────────────────────────────────────────────────────────────
+
+/// Compute scroll offset so that `selected` is always visible.
+fn scroll_offset(selected: usize, visible: usize) -> usize {
+    if selected >= visible {
+        selected + 1 - visible
+    } else {
+        0
+    }
 }
 
 // ── JSON colorization ─────────────────────────────────────────────────────────

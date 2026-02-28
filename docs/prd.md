@@ -1,7 +1,3 @@
-Voici le **PRD (Product Requirements Document)** de ton projet, rédigé en **Markdown** prêt à être utilisé dans ton repo (README ou dossier `/docs/PRD.md`).
-
----
-
 # 📄 PRD — Exécuteur d’API CLI en Rust
 
 ## 1. 📌 Overview

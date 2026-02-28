@@ -25,16 +25,16 @@ pub type Result<T> = std::result::Result<T, ApixError>;
 
 fn friendly_reqwest_error(err: &reqwest::Error) -> String {
     if err.is_connect() {
-        "Connexion impossible — verifiez l'URL ou votre reseau".to_string()
+        "Connection failed — check the URL or your network".to_string()
     } else if err.is_timeout() {
-        "Timeout — le serveur n'a pas repondu a temps".to_string()
+        "Timeout — the server did not respond in time".to_string()
     } else if err.is_redirect() {
-        "Trop de redirections".to_string()
+        "Too many redirects".to_string()
     } else if err.is_decode() {
-        "Erreur de decodage de la reponse".to_string()
+        "Failed to decode response".to_string()
     } else if let Some(url) = err.url() {
-        format!("Requete echouee vers {}", url)
+        format!("Request failed to {}", url)
     } else {
-        format!("Erreur HTTP: {}", err)
+        format!("HTTP error: {}", err)
     }
 }

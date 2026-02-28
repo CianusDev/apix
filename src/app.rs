@@ -220,8 +220,8 @@ impl App {
         };
         let text = serde_json::to_string_pretty(&response.body).unwrap_or_default();
         match arboard::Clipboard::new().and_then(|mut cb| cb.set_text(text)) {
-            Ok(_) => self.set_notice("Copie dans le presse-papiers !".to_string()),
-            Err(e) => self.set_notice(format!("Erreur clipboard: {}", e)),
+            Ok(_) => self.set_notice("Copied to clipboard!".to_string()),
+            Err(e) => self.set_notice(format!("Clipboard error: {}", e)),
         }
     }
 
@@ -233,8 +233,8 @@ impl App {
         let text = serde_json::to_string_pretty(&response.body).unwrap_or_default();
         let filename = "response.json";
         match std::fs::write(filename, &text) {
-            Ok(_) => self.set_notice(format!("Sauvegarde : {}", filename)),
-            Err(e) => self.set_notice(format!("Erreur : {}", e)),
+            Ok(_) => self.set_notice(format!("Saved: {}", filename)),
+            Err(e) => self.set_notice(format!("Error: {}", e)),
         }
     }
 

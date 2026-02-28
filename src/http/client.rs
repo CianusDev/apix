@@ -26,18 +26,16 @@ impl HttpClient {
 
 fn validate_url(url: &str) -> Result<()> {
     if url.is_empty() {
-        return Err(ApixError::InvalidUrl("URL vide".to_string()));
+        return Err(ApixError::InvalidUrl("URL is empty".to_string()));
     }
 
-    // Verifier le scheme
     if !url.starts_with("http://") && !url.starts_with("https://") {
         return Err(ApixError::InvalidUrl(format!(
-            "'{}' — l'URL doit commencer par http:// ou https://",
+            "'{}' — URL must start with http:// or https://",
             url
         )));
     }
 
-    // Verifier qu'il y a un host apres le scheme
     let after_scheme = url
         .strip_prefix("https://")
         .or_else(|| url.strip_prefix("http://"))
@@ -45,7 +43,7 @@ fn validate_url(url: &str) -> Result<()> {
 
     if after_scheme.is_empty() || after_scheme == "/" {
         return Err(ApixError::InvalidUrl(format!(
-            "'{}' — nom de domaine manquant",
+            "'{}' — missing hostname",
             url
         )));
     }
